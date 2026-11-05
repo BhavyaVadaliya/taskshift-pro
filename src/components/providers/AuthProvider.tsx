@@ -44,6 +44,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     refreshUser();
+    // Fail-safe: ensure loading state never hangs indefinitely
+    const safetyTimer = setTimeout(() => {
+      setLoading((prev) => (prev ? false : prev));
+    }, 4000);
+    return () => clearTimeout(safetyTimer);
   }, [refreshUser]);
 
   const login = async (loginId: string, password: string, rememberMe = false) => {

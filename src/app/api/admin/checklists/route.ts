@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
         },
         include: { checklistCompletions: true },
       });
-    } else {
+    } else if (instance) {
       // Ensure any newly added checklist items exist in completions
       const existingChecklistIds = new Set(instance.checklistCompletions.map((c) => c.checklistId));
       const missing = mainChecklistTask.checklists.filter((cl) => !existingChecklistIds.has(cl.id));
@@ -145,7 +145,7 @@ export async function GET(req: NextRequest) {
       if (missing.length > 0) {
         await prisma.checklistCompletion.createMany({
           data: missing.map((cl) => ({
-            taskInstanceId: instance.id,
+            taskInstanceId: instance!.id,
             checklistId: cl.id,
             isCompleted: false,
           })),
