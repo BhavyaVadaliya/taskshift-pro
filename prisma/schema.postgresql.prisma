@@ -1,0 +1,382 @@
+// Production PostgreSQL Schema for Employee Task & Shift Management System
+// Target: PostgreSQL 14+ (Supabase, Neon, AWS RDS, Docker, etc.)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  EMPLOYEE
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum RepeatFrequency {
+  ONCE
+  DAILY
+  WEEKLY
+  SPECIFIC_DAYS
+  CUSTOM
+}
+
+enum TaskInstanceStatus {
+  SCHEDULED
+  UPCOMING
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  COMPLETED_LATE
+  OVERDUE
+  MISSED
+  CANCELLED
+}
+
+enum ShiftAttendanceStatus {
+  ON_TIME
+  LATE
+  ACTIVE
+  COMPLETED
+  FORGOTTEN_LOGOUT
+  REVIEW_REQUIRED
+}
+
+enum NotificationType {
+  TASK_REMINDER
+  OVERDUE_ALERT
+  SHIFT_START
+  SHIFT_END
+  SYSTEM
+  ESCALATION
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+model User {
+  id              String             @id @default(uuid())
+  email           String             @unique
+  employeeId      String             @unique
+  passwordHash    String
+  role            Role               @default(EMPLOYEE)
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  profile         EmployeeProfile?
+  attendances     ShiftAttendance[]
+  taskAssignments TaskAssignment[]
+  taskInstances   TaskInstance[]
+  notificationLogs NotificationLog[]
+  pushSubscriptions PushSubscription[]
+  activityLogs    EmployeeActivityLog[]
+  auditLogs       AuditLog[]
+
+  @@index([email])
+  @@index([employeeId])
+  @@index([role])
+}
+
+model EmployeeProfile {
+  id                 String         @id @default(uuid())
+  userId             String         @unique
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName           String
+  phone              String?
+  departmentId       String?
+  department         Department?    @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  designation        String?
+  assignedShiftId    String?
+  assignedShift      Shift?         @relation(fields: [assignedShiftId], references: [id], onDelete: SetNull)
+  weeklyWorkingDays  Json?          // ["MON", "TUE", "WED", "THU", "FRI"]
+  workingHours       Json?          // { start: "09:00", end: "18:00" }
+  accountStatus      AccountStatus  @default(ACTIVE)
+  joiningDate        DateTime       @default(now())
+  avatarUrl          String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([departmentId])
+  @@index([assignedShiftId])
+}
+
+model Department {
+  id          String             @id @default(uuid())
+  name        String             @unique
+  code        String             @unique
+  description String?
+  managerId   String?
+  profiles    EmployeeProfile[]
+  tasks       Task[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model Shift {
+  id                   String            @id @default(uuid())
+  name                 String
+  startTime            String            // "09:00" (HH:mm)
+  endTime              String            // "18:00" (HH:mm)
+  breakDurationMinutes Int               @default(60)
+  gracePeriodMinutes   Int               @default(15)
+  workingDays          Json              // ["MON", "TUE", "WED", "THU", "FRI"]
+  earlyLoginMinutes    Int               @default(30)
+  lateLoginRules       String?
+  autoLogoutMinutes    Int               @default(60)
+  isOvernight          Boolean           @default(false)
+  isActive             Boolean           @default(true)
+  profiles             EmployeeProfile[]
+  attendances          ShiftAttendance[]
+  tasks                Task[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+}
+
+model ShiftAttendance {
+  id                   String                @id @default(uuid())
+  userId               String
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shiftId              String?
+  shift                Shift?                @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  date                 String                // "YYYY-MM-DD"
+  actualStart          DateTime              @default(now())
+  actualEnd            DateTime?
+  expectedEnd          DateTime?
+  breakMinutes         Int                   @default(0)
+  status               ShiftAttendanceStatus @default(ACTIVE)
+  notes                String?
+  flagReason           String?
+  isLate               Boolean               @default(false)
+  lateMinutes          Int                   @default(0)
+  totalDurationMinutes Int                   @default(0)
+  breaks               ShiftBreak[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@index([userId, date])
+  @@index([status])
+}
+
+model ShiftBreak {
+  id              String          @id @default(uuid())
+  attendanceId    String
+  attendance      ShiftAttendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  startTime       DateTime        @default(now())
+  endTime         DateTime?
+  durationMinutes Int             @default(0)
+  reason          String?
+  createdAt       DateTime        @default(now())
+
+  @@index([attendanceId])
+}
+
+model Task {
+  id                   String               @id @default(uuid())
+  name                 String
+  description          String?
+  instructions         String?
+  departmentId         String?
+  department           Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  priority             Priority             @default(MEDIUM)
+  category             String               @default("General")
+  startTime            String               // "09:15"
+  dueTime              String               // "10:30"
+  reminderTime         String               // "09:10"
+  repeatFrequency      RepeatFrequency      @default(DAILY)
+  repeatDays           Json?                // ["MON", "TUE", ...]
+  shiftId              String?
+  shift                Shift?               @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  requiredCompletion   Boolean              @default(true)
+  allowEarlyCompletion Boolean              @default(false)
+  isPaused             Boolean              @default(false)
+  assignments          TaskAssignment[]
+  checklists           TaskChecklist[]
+  instances            TaskInstance[]
+  notificationSchedule NotificationSchedule?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@index([departmentId])
+  @@index([shiftId])
+}
+
+model TaskAssignment {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([taskId, userId])
+  @@index([userId])
+}
+
+model TaskChecklist {
+  id          String                @id @default(uuid())
+  taskId      String
+  task        Task                  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title       String
+  isRequired  Boolean               @default(true)
+  sortOrder   Int                   @default(0)
+  completions ChecklistCompletion[]
+  createdAt   DateTime              @default(now())
+
+  @@index([taskId])
+}
+
+model TaskInstance {
+  id                         String                @id @default(uuid())
+  taskId                     String
+  task                       Task                  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId                     String
+  user                       User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date                       String                // "YYYY-MM-DD"
+  scheduledStartTime         DateTime
+  scheduledDueTime           DateTime
+  status                     TaskInstanceStatus    @default(NOT_STARTED)
+  startedAt                  DateTime?
+  completedAt                DateTime?
+  delayMinutes               Int                   @default(0)
+  employeeComments           String?
+  notificationSentAt         DateTime?
+  notificationAcknowledgedAt DateTime?
+  checklistCompletions       ChecklistCompletion[]
+  notificationLogs           NotificationLog[]
+  createdAt                  DateTime              @default(now())
+  updatedAt                  DateTime              @updatedAt
+
+  @@unique([taskId, userId, date])
+  @@index([userId, date])
+  @@index([status])
+}
+
+model ChecklistCompletion {
+  id             String        @id @default(uuid())
+  taskInstanceId String
+  taskInstance   TaskInstance  @relation(fields: [taskInstanceId], references: [id], onDelete: Cascade)
+  checklistId    String
+  checklist      TaskChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  isCompleted    Boolean       @default(false)
+  completedAt    DateTime?
+  comments       String?
+  isLate         Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([taskInstanceId, checklistId])
+  @@index([taskInstanceId])
+}
+
+model NotificationSchedule {
+  id                    String   @id @default(uuid())
+  taskId                String   @unique
+  task                  Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  notificationTime      String?
+  message               String
+  repeatIntervalMinutes Int      @default(15)
+  maxReminders          Int      @default(3)
+  escalationMinutes     Int      @default(30)
+  isEnabled             Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model NotificationLog {
+  id             String           @id @default(uuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskInstanceId String?
+  taskInstance   TaskInstance?    @relation(fields: [taskInstanceId], references: [id], onDelete: SetNull)
+  title          String
+  message        String
+  type           NotificationType @default(TASK_REMINDER)
+  isRead         Boolean          @default(false)
+  readAt         DateTime?
+  deliveryStatus DeliveryStatus   @default(SENT)
+  errorReason    String?
+  createdAt      DateTime         @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model EmployeeActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  details   Json?
+  timestamp DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+
+  @@index([userId, timestamp])
+}
+
+model Holiday {
+  id          String   @id @default(uuid())
+  name        String
+  date        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model CompanySetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  timestamp DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([timestamp])
+}
