@@ -227,165 +227,32 @@ async function main() {
 
   console.log('Created Users & Profiles.');
 
-  // 5. Create Standard Tasks & Checklists
+  // 5. Create Standard Task with the 7 Default Checklist Tasks
   const task1 = await prisma.task.create({
     data: {
-      name: 'Daily Office Opening Checklist',
-      description: 'Morning shift opening procedures, email inbox review, and CRM updates.',
-      instructions: 'Ensure all emails flagged urgent are answered first before updating CRM pipeline.',
-      departmentId: deptSupport.id,
-      shiftId: shiftMorning.id,
+      name: 'Daily Operational Checklist',
+      description: 'Daily operational support checklists and service monitoring.',
+      instructions: 'Perform scheduled checks for ticketing, servers, communications, and status pages.',
       priority: 'HIGH',
-      category: 'Operations',
-      startTime: '09:15',
-      dueTime: '10:15',
+      category: 'Company Checklist',
+      startTime: '09:00',
+      dueTime: '18:00',
       reminderTime: '09:10',
       repeatFrequency: 'DAILY',
       repeatDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']),
       requiredCompletion: true,
-      allowEarlyCompletion: false,
-      isPaused: false,
-      checklists: {
-        create: [
-          { title: 'Check company primary and VIP email inboxes', isRequired: true, sortOrder: 0 },
-          { title: 'Check and reply to new client chat inquiries', isRequired: true, sortOrder: 1 },
-          { title: 'Update CRM lead statuses and deal notes', isRequired: true, sortOrder: 2 },
-          { title: 'Review pending high-priority support tickets', isRequired: true, sortOrder: 3 },
-          { title: 'Verify daily morning status report is published', isRequired: true, sortOrder: 4 },
-        ],
-      },
-      assignments: {
-        create: [{ userId: empJohn.id }, { userId: empSarah.id }],
-      },
-      notificationSchedule: {
-        create: {
-          notificationTime: '09:10',
-          message: 'Time to start the Daily Office Opening Checklist! Please review your items.',
-          repeatIntervalMinutes: 15,
-          maxReminders: 3,
-          escalationMinutes: 30,
-          isEnabled: true,
-        },
-      },
-    },
-  });
-
-  const task2 = await prisma.task.create({
-    data: {
-      name: 'Client Follow-up & CRM Synchronization',
-      description: 'Engage pending client escalations and synchronize CRM deal activity.',
-      instructions: 'Log all call summaries with timestamp and next action date.',
-      departmentId: deptSupport.id,
-      shiftId: shiftMorning.id,
-      priority: 'MEDIUM',
-      category: 'Client Care',
-      startTime: '11:00',
-      dueTime: '12:30',
-      reminderTime: '10:55',
-      repeatFrequency: 'DAILY',
-      repeatDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']),
-      requiredCompletion: true,
       allowEarlyCompletion: true,
       isPaused: false,
       checklists: {
         create: [
-          { title: 'Call back 5 designated tier-1 clients', isRequired: true, sortOrder: 0 },
-          { title: 'Document feedback notes in CRM ticket threads', isRequired: true, sortOrder: 1 },
-          { title: 'Notify account manager if client renewal is at risk', isRequired: false, sortOrder: 2 },
+          { title: 'Bold Desk - ticket software', isRequired: true, sortOrder: 0, timerMinutes: 15, targetTime: '09:15' },
+          { title: 'WP engine', isRequired: true, sortOrder: 1, timerMinutes: 60, targetTime: '10:00' },
+          { title: 'Ms teams - A1p tier 1 support new msgs', isRequired: true, sortOrder: 2, timerMinutes: 15, targetTime: '09:30' },
+          { title: 'Twillio Tasks - running more than 1 hr', isRequired: true, sortOrder: 3, timerMinutes: 60, targetTime: '11:00' },
+          { title: 'outlook - new emails or replies from henry or etc', isRequired: true, sortOrder: 4, timerMinutes: 30, targetTime: '10:30' },
+          { title: 'Twilio status page', isRequired: true, sortOrder: 5, timerMinutes: 60, targetTime: '11:30' },
+          { title: 'Pantheon status page', isRequired: true, sortOrder: 6, timerMinutes: 60, targetTime: '12:00' },
         ],
-      },
-      assignments: {
-        create: [{ userId: empJohn.id }],
-      },
-      notificationSchedule: {
-        create: {
-          notificationTime: '10:55',
-          message: 'Client Follow-up schedule is beginning. Please update CRM.',
-          repeatIntervalMinutes: 20,
-          maxReminders: 3,
-          escalationMinutes: 40,
-          isEnabled: true,
-        },
-      },
-    },
-  });
-
-  const task3 = await prisma.task.create({
-    data: {
-      name: 'Shift Handover & End-of-Day Performance Report',
-      description: 'Compile daily ticket throughput, unresolved blockers, and evening handover.',
-      instructions: 'Submit report before punching out to ensure smooth continuity.',
-      departmentId: deptOps.id,
-      shiftId: shiftMorning.id,
-      priority: 'URGENT',
-      category: 'Reporting',
-      startTime: '16:45',
-      dueTime: '17:45',
-      reminderTime: '16:30',
-      repeatFrequency: 'DAILY',
-      repeatDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']),
-      requiredCompletion: true,
-      allowEarlyCompletion: false,
-      isPaused: false,
-      checklists: {
-        create: [
-          { title: 'Log total tickets resolved and active backlog count', isRequired: true, sortOrder: 0 },
-          { title: 'Write handover bulletin for evening shift lead', isRequired: true, sortOrder: 1 },
-          { title: 'Verify workstations and secure sensitive documents', isRequired: true, sortOrder: 2 },
-        ],
-      },
-      assignments: {
-        create: [{ userId: empJohn.id }, { userId: empSarah.id }],
-      },
-      notificationSchedule: {
-        create: {
-          notificationTime: '16:30',
-          message: 'Evening handover reminder: Complete your Daily Performance Report before end of shift.',
-          repeatIntervalMinutes: 15,
-          maxReminders: 2,
-          escalationMinutes: 30,
-          isEnabled: true,
-        },
-      },
-    },
-  });
-
-  const task4 = await prisma.task.create({
-    data: {
-      name: 'Night Server & Security Infrastructure Audit',
-      description: 'Check server logs, disk utilization, database backup status, and security alerts.',
-      instructions: 'Immediate escalation to DevOps lead if CPU > 85% or backup fails.',
-      departmentId: deptTech.id,
-      shiftId: shiftNight.id,
-      priority: 'HIGH',
-      category: 'Maintenance',
-      startTime: '23:30',
-      dueTime: '01:00',
-      reminderTime: '23:15',
-      repeatFrequency: 'DAILY',
-      repeatDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']),
-      requiredCompletion: true,
-      allowEarlyCompletion: true,
-      isPaused: false,
-      checklists: {
-        create: [
-          { title: 'Verify automated database snapshot completed', isRequired: true, sortOrder: 0 },
-          { title: 'Review Firewall and IDS anomaly logs', isRequired: true, sortOrder: 1 },
-          { title: 'Check disk space across production cluster', isRequired: true, sortOrder: 2 },
-        ],
-      },
-      assignments: {
-        create: [{ userId: empEmily.id }],
-      },
-      notificationSchedule: {
-        create: {
-          notificationTime: '23:15',
-          message: 'Night Audit Reminder: Perform infrastructure and security check.',
-          repeatIntervalMinutes: 20,
-          maxReminders: 2,
-          escalationMinutes: 45,
-          isEnabled: true,
-        },
       },
     },
   });
