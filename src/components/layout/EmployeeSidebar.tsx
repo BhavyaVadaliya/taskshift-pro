@@ -6,8 +6,6 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   CheckSquare,
-  Calendar,
-  ClipboardList,
   History,
   UserCheck,
 } from 'lucide-react';
@@ -16,8 +14,6 @@ import { cn } from '@/lib/utils';
 const employeeNavItems = [
   { label: 'My Dashboard', href: '/employee/dashboard', icon: LayoutDashboard },
   { label: 'My Tasks', href: '/employee/tasks', icon: CheckSquare },
-  { label: 'My Schedule', href: '/employee/schedule', icon: Calendar },
-  { label: 'My Attendance', href: '/employee/attendance', icon: ClipboardList },
   { label: 'Task History', href: '/employee/history', icon: History },
   { label: 'My Profile', href: '/employee/profile', icon: UserCheck },
 ];
