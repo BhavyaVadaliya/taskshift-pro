@@ -261,11 +261,11 @@ export default function AdminChecklistsPage() {
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <span className="text-xs text-slate-500 block">Shift Window</span>
-          <div className="mt-1 text-base font-bold font-mono text-slate-800">
-            {startTime} – {dueTime}
+          <span className="text-xs text-slate-500 block">Timer Mode</span>
+          <div className="mt-1 text-sm font-bold text-slate-800">
+            Shift-Triggered
           </div>
-          <span className="text-[10px] text-slate-400">Active hours</span>
+          <span className="text-[10px] text-slate-400">Timers start on user shift toggle</span>
         </div>
       </div>
 
@@ -285,7 +285,7 @@ export default function AdminChecklistsPage() {
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Add or edit checklist items below. When you click "Save & Push Updates", all employees will see the updated items immediately.
+              Add or edit checklist items below. Timers begin dynamically when each employee starts their shift toggle.
             </p>
           </div>
 
@@ -312,48 +312,15 @@ export default function AdminChecklistsPage() {
         </div>
 
         <form onSubmit={handleSaveAndPush} className="p-5 sm:p-6 space-y-4 text-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-1">
-              <label className="block font-semibold text-slate-700 mb-1">Checklist Title</label>
-              <input
-                type="text"
-                required
-                value={taskName}
-                onChange={(e) => setTaskName(e.target.value)}
-                placeholder="e.g. Daily Operational Checklist"
-                className="w-full rounded-lg border border-slate-200 p-2 text-xs focus:border-blue-600 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Scheduled Start Time</label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono focus:border-blue-600 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Due / Shift End Time</label>
-              <input
-                type="time"
-                value={dueTime}
-                onChange={(e) => setDueTime(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono focus:border-blue-600 focus:outline-none"
-              />
-            </div>
-          </div>
-
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Instructions for Employees</label>
+            <label className="block font-semibold text-slate-700 mb-1">Checklist Title</label>
             <input
               type="text"
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              placeholder="e.g. Perform scheduled checks for ticketing, servers, communications, and status pages."
-              className="w-full rounded-lg border border-slate-200 p-2 text-xs focus:border-blue-600 focus:outline-none"
+              required
+              value={taskName}
+              onChange={(e) => setTaskName(e.target.value)}
+              placeholder="e.g. Daily Operational Checklist"
+              className="w-full rounded-lg border border-slate-200 p-2.5 text-xs font-semibold text-slate-900 focus:border-blue-600 focus:outline-none"
             />
           </div>
 
@@ -361,10 +328,10 @@ export default function AdminChecklistsPage() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block font-bold text-slate-800">
-                Checklist Tasks & Timer Schedules ({items.length} tasks)
+                Checklist Tasks & Recurring Timers ({items.length} tasks)
               </label>
               <span className="text-[11px] text-slate-500">
-                Configure individual recurring timer intervals and scheduled times for each task
+                Timers start counting down when the user toggles ON their shift and ring until the shift ends
               </span>
             </div>
 
@@ -389,36 +356,24 @@ export default function AdminChecklistsPage() {
                   </div>
 
                   {/* Timer / Interval Selector */}
-                  <div className="flex items-center flex-wrap gap-2 pl-8 sm:pl-0">
+                  <div className="flex items-center gap-3 pl-8 sm:pl-0 shrink-0">
                     <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1 text-xs text-amber-900">
                       <Timer className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                       <select
                         value={it.timerMinutes || 30}
                         onChange={(e) => handleUpdateItem(idx, 'timerMinutes', Number(e.target.value))}
-                        className="bg-transparent text-xs font-medium text-amber-900 focus:outline-none cursor-pointer"
-                        title="Timer Interval"
+                        className="bg-transparent text-xs font-semibold text-amber-900 focus:outline-none cursor-pointer"
+                        title="Alert Ring Interval"
                       >
-                        <option value={15}>Every 15 min</option>
-                        <option value={20}>Every 20 min</option>
-                        <option value={30}>Every 30 min</option>
-                        <option value={45}>Every 45 min</option>
-                        <option value={60}>Every 1 hour</option>
-                        <option value={90}>Every 1.5 hr</option>
-                        <option value={120}>Every 2 hours</option>
-                        <option value={240}>Every 4 hours</option>
+                        <option value={15}>Ring every 15 min</option>
+                        <option value={20}>Ring every 20 min</option>
+                        <option value={30}>Ring every 30 min</option>
+                        <option value={45}>Ring every 45 min</option>
+                        <option value={60}>Ring every 1 hour</option>
+                        <option value={90}>Ring every 1.5 hr</option>
+                        <option value={120}>Ring every 2 hours</option>
+                        <option value={240}>Ring every 4 hours</option>
                       </select>
-                    </div>
-
-                    {/* Target Time Picker */}
-                    <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1 text-xs text-blue-900">
-                      <Clock className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                      <input
-                        type="time"
-                        value={it.targetTime || '09:30'}
-                        onChange={(e) => handleUpdateItem(idx, 'targetTime', e.target.value)}
-                        className="bg-transparent font-mono text-xs font-medium text-blue-900 focus:outline-none"
-                        title="Scheduled Check Time"
-                      />
                     </div>
 
                     <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer px-1 shrink-0">

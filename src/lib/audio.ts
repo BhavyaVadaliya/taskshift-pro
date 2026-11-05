@@ -48,6 +48,22 @@ class SoundPlayer {
     }
   }
 
+  // Periodic alarm / ringing tone when a checklist task timer completes
+  playAlarm() {
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      // Dual-frequency bell ring (A5 -> D6)
+      this.playTone(ctx, 880, now, 0.14, 0.32, 'triangle');
+      this.playTone(ctx, 1174.66, now + 0.15, 0.22, 0.35, 'triangle');
+      this.playTone(ctx, 880, now + 0.4, 0.14, 0.32, 'triangle');
+      this.playTone(ctx, 1174.66, now + 0.55, 0.3, 0.38, 'triangle');
+    } catch (err) {
+      console.warn('Audio play prevented or unavailable:', err);
+    }
+  }
+
   private playTone(
     ctx: AudioContext,
     freq: number,

@@ -18,6 +18,10 @@ import {
   Timer,
   MessageSquare,
   Bell,
+  BellRing,
+  Volume2,
+  VolumeX,
+  Power,
   Sparkles,
   ArrowRight,
   Radio,
@@ -36,6 +40,8 @@ export default function EmployeeDashboardPage() {
 
   // Live clocks & timers
   const [currentTimeStr, setCurrentTimeStr] = useState<string>('');
+  const [currentMs, setCurrentMs] = useState<number>(Date.now());
+  const [isMuted, setIsMuted] = useState<boolean>(false);
   const [liveShiftSeconds, setLiveShiftSeconds] = useState<number>(0);
   const [liveBreakSeconds, setLiveBreakSeconds] = useState<number>(0);
 
@@ -90,6 +96,7 @@ export default function EmployeeDashboardPage() {
       setCurrentTimeStr(
         now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
       );
+      setCurrentMs(Date.now());
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
@@ -331,10 +338,44 @@ export default function EmployeeDashboardPage() {
     progressPercent: 0,
   };
 
-  const isShiftActive = shiftData?.isShiftActive;
+  const isShiftActive = Boolean(shiftData?.isShiftActive);
   const assignedShift = shiftData?.assignedShift;
   const attendance = shiftData?.attendance;
   const activeBreak = shiftData?.activeBreak;
+
+  const handleToggleShift = async () => {
+    if (isShiftActive) {
+      if (confirm('Are you sure you want to end your shift? All checklist task timers and ringing will stop.')) {
+        await handleEndShift();
+      }
+    } else {
+      await handleStartShift();
+    }
+  };
+
+  const shiftStartMs = attendance?.actualStart ? new Date(attendance.actualStart).getTime() : currentMs;
+
+  // Identify tasks currently due that trigger alarm ringing
+  const ringingTasks = isShiftActive
+    ? (dailyChecklistTask?.checklists || []).filter((item: any) => {
+        const intervalMs = (item.timerMinutes || 30) * 60 * 1000;
+        const refMs = item.completedAt ? new Date(item.completedAt).getTime() : shiftStartMs;
+        return currentMs - refMs >= intervalMs;
+      })
+    : [];
+
+  // Continuous alert sound at set intervals while shift is active and tasks are due
+  useEffect(() => {
+    if (!isShiftActive || ringingTasks.length === 0 || isMuted) return;
+
+    soundPlayer.playAlarm();
+
+    const ringInterval = setInterval(() => {
+      soundPlayer.playAlarm();
+    }, 7000); // Rings every 7 seconds until checked
+
+    return () => clearInterval(ringInterval);
+  }, [isShiftActive, ringingTasks.length, isMuted]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -503,52 +544,76 @@ export default function EmployeeDashboardPage() {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100">
-            {!isShiftActive && !attendance?.actualEnd && (
+          {/* Shift Toggle Switch Control */}
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-3">
+              {/* Interactive Toggle Switch */}
               <button
-                onClick={handleStartShift}
+                type="button"
+                onClick={handleToggleShift}
                 disabled={actionLoading}
-                className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-xs font-bold text-white shadow hover:bg-blue-700 active:scale-95 transition disabled:opacity-50"
+                className={`relative inline-flex h-9 w-18 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  isShiftActive
+                    ? 'bg-emerald-600 shadow-md shadow-emerald-200'
+                    : 'bg-slate-300 hover:bg-slate-400'
+                }`}
+                title={isShiftActive ? 'Click toggle to End Shift' : 'Click toggle to Start Shift & Timers'}
               >
-                <Play className="h-4 w-4 fill-white" />
-                <span>Start Shift Now</span>
+                <span
+                  className={`pointer-events-none inline-block h-8 w-8 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out flex items-center justify-center font-bold text-[10px] ${
+                    isShiftActive ? 'translate-x-9 text-emerald-600 font-extrabold' : 'translate-x-0 text-slate-400'
+                  }`}
+                >
+                  {isShiftActive ? 'ON' : 'OFF'}
+                </span>
               </button>
-            )}
+
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-900 text-sm">
+                    {isShiftActive ? 'Shift is Active' : 'Shift is Inactive'}
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                      isShiftActive
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-slate-100 text-slate-600 border-slate-200'
+                    }`}
+                  >
+                    {isShiftActive ? 'Timers Running' : 'Timers Paused'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {isShiftActive
+                    ? 'Checklist timers are running and will ring at every set interval until shift is toggled off.'
+                    : 'Click the toggle switch to ON to start your shift and begin task timer countdowns.'}
+                </p>
+              </div>
+            </div>
 
             {isShiftActive && (
-              <>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={handleToggleBreak}
                   disabled={actionLoading}
-                  className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition shadow-sm border ${
+                  className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition shadow-sm border ${
                     activeBreak
                       ? 'bg-amber-600 text-white border-amber-600 hover:bg-amber-700'
                       : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                   }`}
                 >
-                  <Coffee className="h-4 w-4" />
-                  <span>{activeBreak ? 'End Break' : 'Start Break'}</span>
+                  <Coffee className="h-3.5 w-3.5" />
+                  <span>{activeBreak ? 'End Break' : 'Take Break'}</span>
                 </button>
 
                 <button
                   onClick={() => setShowEndShiftModal(true)}
                   disabled={actionLoading}
-                  className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-red-700 active:scale-95 transition ml-auto"
+                  className="flex items-center gap-1.5 rounded-xl bg-red-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-red-700 transition"
                 >
-                  <Square className="h-4 w-4 fill-white" />
+                  <Power className="h-3.5 w-3.5" />
                   <span>End Shift</span>
                 </button>
-              </>
-            )}
-
-            {attendance?.actualEnd && (
-              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span>
-                  Your shift for today has been concluded (Total duration:{' '}
-                  {formatDurationMinutes(attendance.totalDurationMinutes)}).
-                </span>
               </div>
             )}
           </div>
@@ -615,7 +680,7 @@ export default function EmployeeDashboardPage() {
         <div className="rounded-2xl border border-blue-200 bg-white p-5 sm:p-6 shadow-sm ring-1 ring-blue-100">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-100 mb-5">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="p-1.5 rounded-lg bg-blue-600 text-white font-bold">
                   <ListChecks className="h-4 w-4" />
                 </div>
@@ -623,126 +688,195 @@ export default function EmployeeDashboardPage() {
                   {dailyChecklistTask.taskName}
                 </h2>
                 <span className="rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 border border-blue-200">
-                  Daily Checklist
+                  Daily Support Tasks
                 </span>
-                {dailyChecklistTask.progressPercent === 100 && (
-                  <span className="rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 border border-emerald-200 flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" /> All Done
+                {isShiftActive ? (
+                  <span className="rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 border border-emerald-200 flex items-center gap-1.5 shadow-sm">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Timers Active & Running
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold px-2.5 py-0.5 border border-slate-200">
+                    Shift Inactive (Timers Paused)
+                  </span>
+                )}
+                {ringingTasks.length > 0 && (
+                  <span className="rounded-full bg-red-600 text-white text-[10px] font-bold px-2.5 py-0.5 flex items-center gap-1 animate-bounce shadow">
+                    <BellRing className="h-3 w-3" />
+                    {ringingTasks.length} Task{ringingTasks.length > 1 ? 's' : ''} Ringing
                   </span>
                 )}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                {dailyChecklistTask.instructions || 'Review and check off all items during your shift.'}
+                {isShiftActive
+                  ? 'All tasks countdown automatically. An alarm bell rings at every set time until your shift ends. Check off tasks to reset.'
+                  : 'Click the Shift toggle button to ON to start your work shift and begin automatic countdown timers.'}
               </p>
             </div>
 
-            <div className="flex items-center gap-4 text-xs shrink-0">
-              <div className="text-right">
-                <span className="font-bold text-slate-900 font-mono text-sm block">
-                  {dailyChecklistTask.completedChecklists}/{dailyChecklistTask.totalChecklists} Checked
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium">
-                  {dailyChecklistTask.progressPercent}% Completed
-                </span>
-              </div>
-              <div className="h-2.5 w-28 rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  style={{ width: `${dailyChecklistTask.progressPercent}%` }}
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    dailyChecklistTask.progressPercent === 100 ? 'bg-emerald-600' : 'bg-blue-600'
-                  }`}
-                />
-              </div>
+            <div className="flex items-center gap-3 shrink-0">
+              {/* Sound Mute / Unmute Button */}
+              <button
+                type="button"
+                onClick={() => setIsMuted(!isMuted)}
+                className={`p-2 rounded-xl border text-xs font-semibold transition flex items-center gap-1.5 ${
+                  isMuted
+                    ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                    : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                }`}
+                title={isMuted ? 'Alarm Sound Muted (Click to Unmute)' : 'Alarm Sound Active (Click to Mute)'}
+              >
+                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4 text-blue-600" />}
+                <span className="text-[11px] hidden sm:inline">{isMuted ? 'Muted' : 'Sound ON'}</span>
+              </button>
+
+              {/* Shift Toggle in Checklist Header */}
+              <button
+                type="button"
+                onClick={handleToggleShift}
+                disabled={actionLoading}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-sm transition active:scale-95 ${
+                  isShiftActive
+                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+                }`}
+              >
+                <Power className="h-3.5 w-3.5" />
+                <span>{isShiftActive ? 'Shift ON' : 'Toggle Shift ON'}</span>
+              </button>
             </div>
           </div>
 
-          {/* Checklist Items list */}
-          <div className="space-y-2.5">
-            {dailyChecklistTask.checklists.map((item: any) => (
-              <div
-                key={item.id}
-                className={`rounded-xl border p-3.5 transition flex items-start justify-between gap-3 ${
-                  item.isCompleted
-                    ? 'bg-emerald-50/30 border-emerald-200'
-                    : 'bg-slate-50/60 border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-start gap-3 flex-1">
-                  <input
-                    type="checkbox"
-                    checked={item.isCompleted}
-                    onChange={() => handleToggleChecklist(dailyChecklistTask.id, item.id, item.isCompleted)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                  />
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`text-xs font-semibold leading-tight ${
-                          item.isCompleted ? 'line-through text-slate-400' : 'text-slate-800'
-                        }`}
-                      >
-                        {item.title}
-                      </span>
+          {/* Checklist Items list with Live Countdowns & Ringing */}
+          <div className="space-y-3">
+            {dailyChecklistTask.checklists.map((item: any, idx: number) => {
+              const intervalMs = (item.timerMinutes || 30) * 60 * 1000;
+              const refMs = item.completedAt ? new Date(item.completedAt).getTime() : shiftStartMs;
+              const diffSec = Math.floor((intervalMs - (currentMs - refMs)) / 1000);
+              const isDue = isShiftActive && diffSec <= 0;
 
-                      {/* Timer Interval Badge */}
-                      {item.timerMinutes && (
-                        <span className="rounded-md bg-amber-50 text-amber-800 px-2 py-0.5 text-[10px] font-semibold border border-amber-200 flex items-center gap-1 font-mono">
+              let countdownBadgeText = 'Starts with shift';
+              if (isShiftActive) {
+                if (diffSec <= 0) {
+                  const overdueMins = Math.floor(Math.abs(diffSec) / 60);
+                  countdownBadgeText = overdueMins > 0 ? `RINGING (+${overdueMins}m)` : `RINGING (Check Due!)`;
+                } else {
+                  const m = Math.floor(diffSec / 60);
+                  const s = diffSec % 60;
+                  countdownBadgeText = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                }
+              }
+
+              return (
+                <div
+                  key={item.id || idx}
+                  className={`rounded-xl border p-3.5 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                    isDue
+                      ? 'bg-red-50/70 border-red-300 ring-2 ring-red-400 shadow-md shadow-red-100'
+                      : item.isCompleted
+                      ? 'bg-emerald-50/25 border-emerald-200'
+                      : 'bg-slate-50/60 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-start gap-3 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={item.isCompleted && !isDue}
+                      onChange={() => handleToggleChecklist(dailyChecklistTask.id, item.id, item.isCompleted && !isDue)}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`text-xs font-bold leading-tight ${
+                            isDue
+                              ? 'text-red-950 font-extrabold'
+                              : item.isCompleted && !isDue
+                              ? 'line-through text-slate-400'
+                              : 'text-slate-800'
+                          }`}
+                        >
+                          {item.title}
+                        </span>
+
+                        {/* Timer Interval Badge */}
+                        <span className="rounded-md bg-amber-50 text-amber-900 px-2 py-0.5 text-[10px] font-semibold border border-amber-200 flex items-center gap-1 font-mono">
                           <Timer className="h-3 w-3 text-amber-600 shrink-0" />
-                          Every {item.timerMinutes}m
+                          Every {item.timerMinutes || 30}m
                         </span>
-                      )}
 
-                      {/* Scheduled Target Time Badge */}
-                      {item.targetTime && (
-                        <span className="rounded-md bg-blue-50 text-blue-800 px-2 py-0.5 text-[10px] font-semibold border border-blue-200 flex items-center gap-1 font-mono">
-                          <Clock className="h-3 w-3 text-blue-600 shrink-0" />
-                          {item.targetTime}
+                        {/* Live Countdown / Ringing Badge */}
+                        <span
+                          className={`rounded-md px-2 py-0.5 text-[10px] font-bold font-mono border flex items-center gap-1 ${
+                            isDue
+                              ? 'bg-red-600 text-white border-red-700 animate-bounce'
+                              : isShiftActive
+                              ? 'bg-blue-50 text-blue-800 border-blue-200'
+                              : 'bg-slate-100 text-slate-500 border-slate-200'
+                          }`}
+                        >
+                          {isDue ? <BellRing className="h-3 w-3 animate-pulse" /> : <Clock className="h-3 w-3 text-blue-600" />}
+                          <span>{countdownBadgeText}</span>
                         </span>
-                      )}
 
-                      {item.isRequired && (
-                        <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.2 rounded border border-red-100">
-                          Mandatory
-                        </span>
-                      )}
-                    </div>
+                        {item.isRequired && (
+                          <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.2 rounded border border-red-100">
+                            Mandatory
+                          </span>
+                        )}
+                      </div>
 
-                    <div className="flex items-center gap-3 mt-1.5">
-                      {item.isCompleted && item.completedAt && (
-                        <span className="text-[10px] text-emerald-700 font-mono font-medium flex items-center gap-1">
-                          <Check className="h-3 w-3" />
-                          Checked at{' '}
-                          {new Date(item.completedAt).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      )}
+                      <div className="flex flex-wrap items-center gap-3 mt-1.5 text-[10px]">
+                        {item.isCompleted && item.completedAt && (
+                          <span className="text-emerald-700 font-mono font-medium flex items-center gap-1">
+                            <Check className="h-3 w-3" />
+                            Last check: {new Date(item.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
 
-                      {item.comments && (
-                        <span className="text-[11px] text-slate-500 italic">
-                          Note: "{item.comments}"
-                        </span>
-                      )}
+                        {isDue && (
+                          <span className="text-red-700 font-bold flex items-center gap-1 animate-pulse">
+                            🔔 Alarm ringing! Check off task to reset the {item.timerMinutes || 30}m countdown.
+                          </span>
+                        )}
+
+                        {item.comments && (
+                          <span className="text-slate-500 italic">
+                            Note: "{item.comments}"
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <input
-                    type="text"
-                    placeholder="Add item note..."
-                    defaultValue={item.comments || ''}
-                    onBlur={(e) => {
-                      if (e.target.value !== (item.comments || '')) {
-                        handleSaveChecklistComment(dailyChecklistTask.id, item.id, item.isCompleted, e.target.value);
-                      }
-                    }}
-                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-700 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none w-36 sm:w-48"
-                  />
+                  <div className="flex items-center gap-2 shrink-0 pl-7 sm:pl-0">
+                    {isDue && (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleChecklist(dailyChecklistTask.id, item.id, false)}
+                        className="rounded-lg bg-red-600 hover:bg-red-700 px-3 py-1.5 text-[11px] font-bold text-white shadow transition flex items-center gap-1 shrink-0"
+                      >
+                        <Check className="h-3 w-3" />
+                        <span>Check & Reset</span>
+                      </button>
+                    )}
+
+                    <input
+                      type="text"
+                      placeholder="Add task note..."
+                      defaultValue={item.comments || ''}
+                      onBlur={(e) => {
+                        if (e.target.value !== (item.comments || '')) {
+                          handleSaveChecklistComment(dailyChecklistTask.id, item.id, item.isCompleted, e.target.value);
+                        }
+                      }}
+                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-700 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none w-36 sm:w-44"
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
