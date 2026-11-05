@@ -66,26 +66,47 @@ export async function generateDailyTaskInstances(targetDateStr?: string) {
       .filter((a) => a.user.isActive && a.user.profile?.accountStatus !== 'INACTIVE')
       .map((a) => a.user);
 
-    // If no direct assignments, assign to active employees belonging to task's department or shift
-    if (targetUsers.length === 0 && (task.departmentId || task.shiftId)) {
-      targetUsers = await prisma.user.findMany({
-        where: {
-          isActive: true,
-          role: 'EMPLOYEE',
-          profile: {
-            ...(task.departmentId ? { departmentId: task.departmentId } : {}),
-            ...(task.shiftId ? { assignedShiftId: task.shiftId } : {}),
-            accountStatus: 'ACTIVE',
-          },
-        },
-        include: {
-          profile: {
-            include: {
-              assignedShift: true,
+    // If no direct assignments, assign to active employees belonging to task's department or shift,
+    // or to ALL active employees if neither department nor shift is specified (universal task)
+    if (targetUsers.length === 0) {
+      if (task.departmentId || task.shiftId) {
+        targetUsers = await prisma.user.findMany({
+          where: {
+            isActive: true,
+            role: 'EMPLOYEE',
+            profile: {
+              ...(task.departmentId ? { departmentId: task.departmentId } : {}),
+              ...(task.shiftId ? { assignedShiftId: task.shiftId } : {}),
+              accountStatus: 'ACTIVE',
             },
           },
-        },
-      });
+          include: {
+            profile: {
+              include: {
+                assignedShift: true,
+              },
+            },
+          },
+        });
+      } else {
+        // Universal task for all employees (e.g. Daily Checklist)
+        targetUsers = await prisma.user.findMany({
+          where: {
+            isActive: true,
+            role: 'EMPLOYEE',
+            profile: {
+              accountStatus: 'ACTIVE',
+            },
+          },
+          include: {
+            profile: {
+              include: {
+                assignedShift: true,
+              },
+            },
+          },
+        });
+      }
     }
 
     // Build scheduled start and due DateTime objects

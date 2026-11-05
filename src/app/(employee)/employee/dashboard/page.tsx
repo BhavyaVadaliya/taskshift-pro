@@ -274,14 +274,43 @@ export default function EmployeeDashboardPage() {
     }
   };
 
+  const handleSaveChecklistComment = async (
+    instanceId: string,
+    checklistId: string,
+    isCompleted: boolean,
+    commentText: string
+  ) => {
+    try {
+      await fetch(`/api/employee/tasks/${instanceId}/checklist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          checklistId,
+          isCompleted,
+          comments: commentText,
+        }),
+      });
+      fetchData();
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
   // Filter tasks based on active category tab
   const allTasks = tasksData?.tasks || [];
+  const dailyChecklistTask = allTasks.find(
+    (t: any) =>
+      t.category === 'Company Checklist' ||
+      t.taskName.toLowerCase().includes('checklist') ||
+      t.taskName.toLowerCase().includes('daily office')
+  );
+
   const activeTasks = tasksData?.activeTasks || [];
   const upcomingTasks = tasksData?.upcomingTasks || [];
   const overdueTasks = tasksData?.overdueTasks || [];
   const completedTasks = tasksData?.completedTasks || [];
 
-  const displayTasks =
+  const rawDisplayTasks =
     activeTab === 'all'
       ? allTasks
       : activeTab === 'active'
@@ -291,6 +320,9 @@ export default function EmployeeDashboardPage() {
       : activeTab === 'overdue'
       ? overdueTasks
       : completedTasks;
+
+  // Primary daily checklist is highlighted above, other tasks displayed below
+  const displayTasks = rawDisplayTasks.filter((t: any) => t.id !== dailyChecklistTask?.id);
 
   const progress = tasksData?.progress || {
     totalRequiredItems: 0,
@@ -577,8 +609,132 @@ export default function EmployeeDashboardPage() {
         </div>
       </div>
 
-      {/* Task Section */}
+      {/* Primary Daily Operational Checklist (Live from Admin for All Users) */}
+      {dailyChecklistTask && (
+        <div className="rounded-2xl border border-blue-200 bg-white p-5 sm:p-6 shadow-sm ring-1 ring-blue-100">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-100 mb-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-blue-600 text-white font-bold">
+                  <ListChecks className="h-4 w-4" />
+                </div>
+                <h2 className="text-base font-bold text-slate-900">
+                  {dailyChecklistTask.taskName}
+                </h2>
+                <span className="rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 border border-blue-200">
+                  Daily Checklist
+                </span>
+                {dailyChecklistTask.progressPercent === 100 && (
+                  <span className="rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 border border-emerald-200 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> All Done
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                {dailyChecklistTask.instructions || 'Review and check off all items during your shift.'}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4 text-xs shrink-0">
+              <div className="text-right">
+                <span className="font-bold text-slate-900 font-mono text-sm block">
+                  {dailyChecklistTask.completedChecklists}/{dailyChecklistTask.totalChecklists} Checked
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {dailyChecklistTask.progressPercent}% Completed
+                </span>
+              </div>
+              <div className="h-2.5 w-28 rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  style={{ width: `${dailyChecklistTask.progressPercent}%` }}
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    dailyChecklistTask.progressPercent === 100 ? 'bg-emerald-600' : 'bg-blue-600'
+                  }`}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Checklist Items list */}
+          <div className="space-y-2.5">
+            {dailyChecklistTask.checklists.map((item: any) => (
+              <div
+                key={item.id}
+                className={`rounded-xl border p-3.5 transition flex items-start justify-between gap-3 ${
+                  item.isCompleted
+                    ? 'bg-emerald-50/30 border-emerald-200'
+                    : 'bg-slate-50/60 border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-start gap-3 flex-1">
+                  <input
+                    type="checkbox"
+                    checked={item.isCompleted}
+                    onChange={() => handleToggleChecklist(dailyChecklistTask.id, item.id, item.isCompleted)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs font-semibold leading-tight ${
+                          item.isCompleted ? 'line-through text-slate-400' : 'text-slate-800'
+                        }`}
+                      >
+                        {item.title}
+                      </span>
+                      {item.isRequired && (
+                        <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.2 rounded border border-red-100">
+                          Mandatory
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3 mt-1.5">
+                      {item.isCompleted && item.completedAt && (
+                        <span className="text-[10px] text-emerald-700 font-mono font-medium flex items-center gap-1">
+                          <Check className="h-3 w-3" />
+                          Checked at{' '}
+                          {new Date(item.completedAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      )}
+
+                      {item.comments && (
+                        <span className="text-[11px] text-slate-500 italic">
+                          Note: "{item.comments}"
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <input
+                    type="text"
+                    placeholder="Add item note..."
+                    defaultValue={item.comments || ''}
+                    onBlur={(e) => {
+                      if (e.target.value !== (item.comments || '')) {
+                        handleSaveChecklistComment(dailyChecklistTask.id, item.id, item.isCompleted, e.target.value);
+                      }
+                    }}
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-700 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none w-36 sm:w-48"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Additional Assigned Tasks Section */}
       <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-800">Additional Assigned Tasks</h3>
+        </div>
+
         {/* Category Filter Tabs */}
         <div className="flex items-center justify-between border-b border-slate-200 pb-2">
           <div className="flex items-center gap-1 sm:gap-2">

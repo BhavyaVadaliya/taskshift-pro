@@ -15,12 +15,13 @@ import {
   BarChart3,
   Settings,
   ShieldCheck,
+  ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-  { label: 'Live Monitoring', href: '/admin/monitoring', icon: Activity, badge: 'Live' },
+  { label: 'Daily Checklist', href: '/admin/checklists', icon: ListChecks, badge: 'All Users' },
   { label: 'Employees', href: '/admin/employees', icon: Users },
   { label: 'Departments', href: '/admin/departments', icon: Building2 },
   { label: 'Shifts', href: '/admin/shifts', icon: CalendarClock },
@@ -45,7 +46,8 @@ export function AdminSidebar() {
           <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href;
+              const isActive =
+                pathname === item.href || (item.href === '/admin/checklists' && pathname === '/admin/monitoring');
               return (
                 <Link
                   key={item.href}

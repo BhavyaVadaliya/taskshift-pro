@@ -62,6 +62,36 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     });
   }
 
+  // Check if all required checklists for this task are now satisfied
+  const allCompletions = await prisma.checklistCompletion.findMany({
+    where: { taskInstanceId: instanceId },
+    include: { checklist: true },
+  });
+
+  const requiredCompletions = allCompletions.filter((c) => c.checklist.isRequired);
+  const allRequiredDone =
+    requiredCompletions.length > 0 &&
+    requiredCompletions.every((c) => (c.checklistId === checklistId ? isCompleted : c.isCompleted));
+
+  if (allRequiredDone && isCompleted) {
+    await prisma.taskInstance.update({
+      where: { id: instanceId },
+      data: {
+        status: isLate ? 'COMPLETED_LATE' : 'COMPLETED',
+        completedAt: instance.completedAt || now,
+      },
+    });
+  } else if (!allRequiredDone && (instance.status === 'COMPLETED' || instance.status === 'COMPLETED_LATE')) {
+    // If user unchecked an item after completing, return to IN_PROGRESS
+    await prisma.taskInstance.update({
+      where: { id: instanceId },
+      data: {
+        status: 'IN_PROGRESS',
+        completedAt: null,
+      },
+    });
+  }
+
   await logEmployeeActivity({
     userId: auth.user.id,
     action: isCompleted ? 'CHECKLIST_ITEM_COMPLETED' : 'CHECKLIST_ITEM_UNCHECKED',
