@@ -234,14 +234,16 @@ model TaskAssignment {
 }
 
 model TaskChecklist {
-  id          String                @id @default(uuid())
-  taskId      String
-  task        Task                  @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  title       String
-  isRequired  Boolean               @default(true)
-  sortOrder   Int                   @default(0)
-  completions ChecklistCompletion[]
-  createdAt   DateTime              @default(now())
+  id           String                @id @default(uuid())
+  taskId       String
+  task         Task                  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title        String
+  isRequired   Boolean               @default(true)
+  sortOrder    Int                   @default(0)
+  targetTime   String?               // e.g. "09:30" or specific time
+  timerMinutes Int?                  // e.g. 15, 30, 60, 120 (interval in minutes)
+  completions  ChecklistCompletion[]
+  createdAt    DateTime              @default(now())
 
   @@index([taskId])
 }

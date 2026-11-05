@@ -10,9 +10,22 @@ import {
   AlertCircle,
   RefreshCw,
   Check,
+  Timer,
+  Clock,
+  RotateCcw,
 } from 'lucide-react';
 import { getTodayDateString } from '@/lib/utils';
 import { soundPlayer } from '@/lib/audio';
+
+const DEFAULT_TASKS = [
+  { title: 'Bold Desk - ticket software', timerMinutes: 15, targetTime: '09:15', isRequired: true },
+  { title: 'WP engine', timerMinutes: 60, targetTime: '10:00', isRequired: true },
+  { title: 'Ms teams - A1p tier 1 support new msgs', timerMinutes: 15, targetTime: '09:30', isRequired: true },
+  { title: 'Twillio Tasks - running more than 1 hr', timerMinutes: 60, targetTime: '11:00', isRequired: true },
+  { title: 'outlook - new emails or replies from henry or etc', timerMinutes: 30, targetTime: '10:30', isRequired: true },
+  { title: 'Twilio status page', timerMinutes: 60, targetTime: '11:30', isRequired: true },
+  { title: 'Pantheon status page', timerMinutes: 60, targetTime: '12:00', isRequired: true },
+];
 
 export default function AdminChecklistsPage() {
   const [loading, setLoading] = useState(true);
@@ -32,11 +45,19 @@ export default function AdminChecklistsPage() {
   });
 
   // Editor form state
-  const [taskName, setTaskName] = useState('');
+  const [taskName, setTaskName] = useState('Daily Operational Checklist');
   const [startTime, setStartTime] = useState('09:00');
   const [dueTime, setDueTime] = useState('18:00');
-  const [instructions, setInstructions] = useState('');
-  const [items, setItems] = useState<Array<{ id?: string; title: string; isRequired: boolean }>>([]);
+  const [instructions, setInstructions] = useState('Perform scheduled checks for ticketing, servers, communications, and status pages.');
+  const [items, setItems] = useState<
+    Array<{
+      id?: string;
+      title: string;
+      isRequired: boolean;
+      timerMinutes: number;
+      targetTime: string;
+    }>
+  >(DEFAULT_TASKS);
 
   const fetchChecklistData = useCallback(async () => {
     try {
@@ -50,17 +71,24 @@ export default function AdminChecklistsPage() {
 
         // Populate editor state
         if (json.checklistTask) {
-          setTaskName(json.checklistTask.name);
+          setTaskName(json.checklistTask.name || 'Daily Operational Checklist');
           setStartTime(json.checklistTask.startTime || '09:00');
           setDueTime(json.checklistTask.dueTime || '18:00');
           setInstructions(json.checklistTask.instructions || '');
-          setItems(
-            json.checklistTask.items.map((i: any) => ({
-              id: i.id,
-              title: i.title,
-              isRequired: i.isRequired,
-            }))
-          );
+
+          if (json.checklistTask.items && json.checklistTask.items.length > 0) {
+            setItems(
+              json.checklistTask.items.map((i: any) => ({
+                id: i.id,
+                title: i.title,
+                isRequired: i.isRequired !== undefined ? i.isRequired : true,
+                timerMinutes: Number(i.timerMinutes) || 30,
+                targetTime: i.targetTime || '09:30',
+              }))
+            );
+          } else {
+            setItems(DEFAULT_TASKS);
+          }
         }
       }
     } catch (err: any) {
@@ -79,7 +107,22 @@ export default function AdminChecklistsPage() {
 
   // Add Item to Checklist
   const handleAddItem = () => {
-    setItems([...items, { title: '', isRequired: true }]);
+    setItems([
+      ...items,
+      {
+        title: '',
+        isRequired: true,
+        timerMinutes: 30,
+        targetTime: '10:00',
+      },
+    ]);
+  };
+
+  // Reset to default 7 tasks
+  const handleResetToDefaults = () => {
+    if (confirm('Reset checklist items to the 7 default support tasks?')) {
+      setItems(DEFAULT_TASKS);
+    }
   };
 
   // Remove Item
@@ -246,14 +289,26 @@ export default function AdminChecklistsPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleAddItem}
-            className="flex items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50 shadow-sm transition shrink-0"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>Add Checklist Item</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleResetToDefaults}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition shrink-0"
+              title="Reset to the 7 default support tasks"
+            >
+              <RotateCcw className="h-3.5 w-3.5 text-slate-500" />
+              <span>Reset 7 Defaults</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleAddItem}
+              className="flex items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50 shadow-sm transition shrink-0"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add Checklist Task</span>
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSaveAndPush} className="p-5 sm:p-6 space-y-4 text-xs">
@@ -297,50 +352,96 @@ export default function AdminChecklistsPage() {
               type="text"
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              placeholder="e.g. Ensure all tickets are verified before checking off."
+              placeholder="e.g. Perform scheduled checks for ticketing, servers, communications, and status pages."
               className="w-full rounded-lg border border-slate-200 p-2 text-xs focus:border-blue-600 focus:outline-none"
             />
           </div>
 
           {/* Checklist Items Inputs */}
           <div>
-            <label className="block font-bold text-slate-800 mb-2">Checklist Items ({items.length} items)</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block font-bold text-slate-800">
+                Checklist Tasks & Timer Schedules ({items.length} tasks)
+              </label>
+              <span className="text-[11px] text-slate-500">
+                Configure individual recurring timer intervals and scheduled times for each task
+              </span>
+            </div>
+
             <div className="space-y-2.5">
               {items.map((it, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/60 p-2.5 hover:border-slate-300 transition"
+                  className="flex flex-col sm:flex-row sm:items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50/70 p-3 hover:border-slate-300 transition"
                 >
-                  <span className="font-mono text-slate-400 font-bold w-6 text-center">{idx + 1}.</span>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Describe checklist task item..."
-                    value={it.title}
-                    onChange={(e) => handleUpdateItem(idx, 'title', e.target.value)}
-                    className="flex-1 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-800 focus:border-blue-600 focus:outline-none"
-                  />
-
-                  <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer px-2 shrink-0">
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="font-mono text-slate-500 font-bold text-xs w-6 text-center shrink-0">
+                      {idx + 1}.
+                    </span>
                     <input
-                      type="checkbox"
-                      checked={it.isRequired}
-                      onChange={(e) => handleUpdateItem(idx, 'isRequired', e.target.checked)}
-                      className="rounded text-blue-600 h-4 w-4"
+                      type="text"
+                      required
+                      placeholder="Task name (e.g. Bold Desk - ticket software)..."
+                      value={it.title}
+                      onChange={(e) => handleUpdateItem(idx, 'title', e.target.value)}
+                      className="flex-1 rounded-lg border border-slate-200 bg-white p-2 text-xs font-semibold text-slate-900 focus:border-blue-600 focus:outline-none"
                     />
-                    <span className="font-medium">Mandatory</span>
-                  </label>
+                  </div>
 
-                  {items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(idx)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                      title="Remove Item"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
+                  {/* Timer / Interval Selector */}
+                  <div className="flex items-center flex-wrap gap-2 pl-8 sm:pl-0">
+                    <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1 text-xs text-amber-900">
+                      <Timer className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                      <select
+                        value={it.timerMinutes || 30}
+                        onChange={(e) => handleUpdateItem(idx, 'timerMinutes', Number(e.target.value))}
+                        className="bg-transparent text-xs font-medium text-amber-900 focus:outline-none cursor-pointer"
+                        title="Timer Interval"
+                      >
+                        <option value={15}>Every 15 min</option>
+                        <option value={20}>Every 20 min</option>
+                        <option value={30}>Every 30 min</option>
+                        <option value={45}>Every 45 min</option>
+                        <option value={60}>Every 1 hour</option>
+                        <option value={90}>Every 1.5 hr</option>
+                        <option value={120}>Every 2 hours</option>
+                        <option value={240}>Every 4 hours</option>
+                      </select>
+                    </div>
+
+                    {/* Target Time Picker */}
+                    <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1 text-xs text-blue-900">
+                      <Clock className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                      <input
+                        type="time"
+                        value={it.targetTime || '09:30'}
+                        onChange={(e) => handleUpdateItem(idx, 'targetTime', e.target.value)}
+                        className="bg-transparent font-mono text-xs font-medium text-blue-900 focus:outline-none"
+                        title="Scheduled Check Time"
+                      />
+                    </div>
+
+                    <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer px-1 shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={it.isRequired}
+                        onChange={(e) => handleUpdateItem(idx, 'isRequired', e.target.checked)}
+                        className="rounded text-blue-600 h-4 w-4"
+                      />
+                      <span className="font-medium">Mandatory</span>
+                    </label>
+
+                    {items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(idx)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition shrink-0"
+                        title="Remove Task"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

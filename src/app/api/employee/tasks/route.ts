@@ -55,6 +55,8 @@ export async function GET(req: NextRequest) {
         title: cl.title,
         isRequired: cl.isRequired,
         sortOrder: cl.sortOrder,
+        targetTime: cl.targetTime || null,
+        timerMinutes: cl.timerMinutes || null,
         isCompleted,
         completedAt: completion?.completedAt?.toISOString() || null,
         comments: completion?.comments || null,

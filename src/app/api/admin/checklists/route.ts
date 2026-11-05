@@ -79,11 +79,13 @@ export async function GET(req: NextRequest) {
         isPaused: false,
         checklists: {
           create: [
-            { title: 'Check primary company email & ticket inbox', isRequired: true, sortOrder: 0 },
-            { title: 'Review open client support queries', isRequired: true, sortOrder: 1 },
-            { title: 'Update CRM lead statuses & daily notes', isRequired: true, sortOrder: 2 },
-            { title: 'Review team backlog and daily priorities', isRequired: true, sortOrder: 3 },
-            { title: 'Submit end-of-shift handover report', isRequired: true, sortOrder: 4 },
+            { title: 'Bold Desk - ticket software', timerMinutes: 15, targetTime: '09:15', isRequired: true, sortOrder: 0 },
+            { title: 'WP engine', timerMinutes: 60, targetTime: '10:00', isRequired: true, sortOrder: 1 },
+            { title: 'Ms teams - A1p tier 1 support new msgs', timerMinutes: 15, targetTime: '09:30', isRequired: true, sortOrder: 2 },
+            { title: 'Twillio Tasks - running more than 1 hr', timerMinutes: 60, targetTime: '11:00', isRequired: true, sortOrder: 3 },
+            { title: 'outlook - new emails or replies from henry or etc', timerMinutes: 30, targetTime: '10:30', isRequired: true, sortOrder: 4 },
+            { title: 'Twilio status page', timerMinutes: 60, targetTime: '11:30', isRequired: true, sortOrder: 5 },
+            { title: 'Pantheon status page', timerMinutes: 60, targetTime: '12:00', isRequired: true, sortOrder: 6 },
           ],
         },
       },
@@ -237,6 +239,8 @@ export async function GET(req: NextRequest) {
         title: cl.title,
         isRequired: cl.isRequired,
         sortOrder: cl.sortOrder,
+        targetTime: cl.targetTime || '09:30',
+        timerMinutes: cl.timerMinutes || 30,
       })),
     },
     summary: {
@@ -311,11 +315,13 @@ export async function PUT(req: NextRequest) {
       const it = items[i];
       const title = typeof it === 'string' ? it.trim() : it.title.trim();
       const isRequired = it.isRequired !== undefined ? Boolean(it.isRequired) : true;
+      const targetTime = it.targetTime ? String(it.targetTime).trim() : null;
+      const timerMinutes = it.timerMinutes ? Number(it.timerMinutes) : 30;
 
       if (it.id && existingMap.has(it.id)) {
         await prisma.taskChecklist.update({
           where: { id: it.id },
-          data: { title, isRequired, sortOrder: i },
+          data: { title, isRequired, sortOrder: i, targetTime, timerMinutes },
         });
         keptIds.add(it.id);
       } else {
@@ -325,6 +331,8 @@ export async function PUT(req: NextRequest) {
             title,
             isRequired,
             sortOrder: i,
+            targetTime,
+            timerMinutes,
           },
         });
         keptIds.add(created.id);

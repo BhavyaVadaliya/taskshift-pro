@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ListChecks,
   Check,
+  Timer,
   MessageSquare,
   Bell,
   Sparkles,
@@ -674,7 +675,7 @@ export default function EmployeeDashboardPage() {
                     className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={`text-xs font-semibold leading-tight ${
                           item.isCompleted ? 'line-through text-slate-400' : 'text-slate-800'
@@ -682,6 +683,23 @@ export default function EmployeeDashboardPage() {
                       >
                         {item.title}
                       </span>
+
+                      {/* Timer Interval Badge */}
+                      {item.timerMinutes && (
+                        <span className="rounded-md bg-amber-50 text-amber-800 px-2 py-0.5 text-[10px] font-semibold border border-amber-200 flex items-center gap-1 font-mono">
+                          <Timer className="h-3 w-3 text-amber-600 shrink-0" />
+                          Every {item.timerMinutes}m
+                        </span>
+                      )}
+
+                      {/* Scheduled Target Time Badge */}
+                      {item.targetTime && (
+                        <span className="rounded-md bg-blue-50 text-blue-800 px-2 py-0.5 text-[10px] font-semibold border border-blue-200 flex items-center gap-1 font-mono">
+                          <Clock className="h-3 w-3 text-blue-600 shrink-0" />
+                          {item.targetTime}
+                        </span>
+                      )}
+
                       {item.isRequired && (
                         <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.2 rounded border border-red-100">
                           Mandatory
