@@ -6,13 +6,6 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
-  Building2,
-  CalendarClock,
-  CheckSquare,
-  BellRing,
-  Activity,
-  ClipboardList,
-  BarChart3,
   Settings,
   ShieldCheck,
   ListChecks,
@@ -23,12 +16,6 @@ const navItems = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'Daily Checklist', href: '/admin/checklists', icon: ListChecks, badge: 'All Users' },
   { label: 'Employees', href: '/admin/employees', icon: Users },
-  { label: 'Departments', href: '/admin/departments', icon: Building2 },
-  { label: 'Shifts', href: '/admin/shifts', icon: CalendarClock },
-  { label: 'Task Management', href: '/admin/tasks', icon: CheckSquare },
-  { label: 'Notification Schedule', href: '/admin/notifications', icon: BellRing },
-  { label: 'Attendance', href: '/admin/attendance', icon: ClipboardList },
-  { label: 'Reports & Analytics', href: '/admin/reports', icon: BarChart3 },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
