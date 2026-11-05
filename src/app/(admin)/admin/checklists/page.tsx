@@ -7,16 +7,9 @@ import {
   Trash2,
   Save,
   CheckCircle2,
-  Clock,
   AlertCircle,
-  Users,
-  Search,
   RefreshCw,
-  Sparkles,
-  ArrowRight,
   Check,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 import { getTodayDateString } from '@/lib/utils';
 import { soundPlayer } from '@/lib/audio';
@@ -44,10 +37,6 @@ export default function AdminChecklistsPage() {
   const [dueTime, setDueTime] = useState('18:00');
   const [instructions, setInstructions] = useState('');
   const [items, setItems] = useState<Array<{ id?: string; title: string; isRequired: boolean }>>([]);
-
-  // Search filter
-  const [searchEmployee, setSearchEmployee] = useState('');
-  const [expandedEmployeeId, setExpandedEmployeeId] = useState<string | null>(null);
 
   const fetchChecklistData = useCallback(async () => {
     try {
@@ -151,18 +140,8 @@ export default function AdminChecklistsPage() {
     }
   };
 
-  const filteredEmployees = employeeProgress.filter((e) => {
-    if (!searchEmployee) return true;
-    const q = searchEmployee.toLowerCase();
-    return (
-      e.employeeName.toLowerCase().includes(q) ||
-      e.employeeId.toLowerCase().includes(q) ||
-      e.departmentName.toLowerCase().includes(q)
-    );
-  });
-
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto">
       {/* Page Title & Status Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -172,29 +151,22 @@ export default function AdminChecklistsPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-                Daily Checklist Hub (All Users)
+                Daily Checklist (All Users)
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">
-                Update daily checklist items here. Changes are instantly pushed to all employees' dashboards for live check-in.
+                Configure the daily operational checklist. All updates are pushed directly to all employee dashboards.
               </p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 font-medium focus:border-blue-600 focus:outline-none"
-          />
-
           <button
             onClick={() => fetchChecklistData()}
             className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
           >
             <RefreshCw className={`h-3.5 w-3.5 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
-            <span>Sync Live</span>
+            <span>Reload</span>
           </button>
         </div>
       </div>
@@ -223,35 +195,34 @@ export default function AdminChecklistsPage() {
         </div>
       )}
 
-      {/* Checklist Summary Cards */}
+      {/* Checklist Configuration Quick Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <span className="text-xs text-slate-500 block">Total Employees</span>
-          <div className="mt-1 text-2xl font-bold text-slate-900">{summary.totalEmployees}</div>
-          <span className="text-[10px] text-slate-400">All registered staff</span>
-        </div>
-
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-4 shadow-sm">
-          <span className="text-xs font-medium text-emerald-800 block">Fully Completed</span>
-          <div className="mt-1 text-2xl font-bold text-emerald-700">{summary.fullyCompletedEmployees}</div>
-          <span className="text-[10px] text-emerald-600">All checklist items checked</span>
+          <span className="text-xs text-slate-500 block">Total Items</span>
+          <div className="mt-1 text-2xl font-bold text-slate-900">{items.length}</div>
+          <span className="text-[10px] text-slate-400">Checklist steps</span>
         </div>
 
         <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 shadow-sm">
-          <span className="text-xs font-medium text-blue-800 block">In Progress</span>
-          <div className="mt-1 text-2xl font-bold text-blue-700">{summary.inProgressEmployees}</div>
-          <span className="text-[10px] text-blue-600">Partially checked items</span>
+          <span className="text-xs font-medium text-blue-800 block">Mandatory Items</span>
+          <div className="mt-1 text-2xl font-bold text-blue-700">
+            {items.filter((i) => i.isRequired).length}
+          </div>
+          <span className="text-[10px] text-blue-600">Required completion</span>
+        </div>
+
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-4 shadow-sm">
+          <span className="text-xs font-medium text-emerald-800 block">Target Audience</span>
+          <div className="mt-1 text-2xl font-bold text-emerald-700">All Staff</div>
+          <span className="text-[10px] text-emerald-600">All registered employees</span>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <span className="text-xs text-slate-500 block">Team Completion Rate</span>
-          <div className="mt-1 text-2xl font-bold text-slate-900">{summary.teamCompletionRate}%</div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
-            <div
-              style={{ width: `${summary.teamCompletionRate}%` }}
-              className="h-full bg-blue-600 rounded-full transition-all duration-500"
-            />
+          <span className="text-xs text-slate-500 block">Shift Window</span>
+          <div className="mt-1 text-base font-bold font-mono text-slate-800">
+            {startTime} – {dueTime}
           </div>
+          <span className="text-[10px] text-slate-400">Active hours</span>
         </div>
       </div>
 
@@ -390,166 +361,6 @@ export default function AdminChecklistsPage() {
             </button>
           </div>
         </form>
-      </div>
-
-      {/* Live Employee Check-in Tracking Section */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <h2 className="text-sm font-bold text-slate-900">Live Employee Checklist Check-in Progress</h2>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Live status showing which employee has checked off each item on their dashboard today.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search employee..."
-                value={searchEmployee}
-                onChange={(e) => setSearchEmployee(e.target.value)}
-                className="rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-3 text-xs text-slate-900 focus:bg-white focus:border-blue-600 focus:outline-none w-52"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="divide-y divide-slate-100">
-          {filteredEmployees.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-400">
-              No employees found matching filter.
-            </div>
-          ) : (
-            filteredEmployees.map((emp) => {
-              const isExpanded = expandedEmployeeId === emp.userId;
-
-              return (
-                <div key={emp.userId} className="p-4 hover:bg-slate-50/50 transition">
-                  <div
-                    onClick={() => setExpandedEmployeeId(isExpanded ? null : emp.userId)}
-                    className="flex items-center justify-between cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700 font-bold text-xs">
-                        {emp.employeeName.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900 text-xs">{emp.employeeName}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">({emp.employeeId})</span>
-                          <span className="rounded bg-slate-100 px-2 py-0.2 text-[10px] text-slate-600 font-medium">
-                            {emp.departmentName}
-                          </span>
-                        </div>
-                        <span className="text-[11px] text-slate-500">
-                          Assigned Shift: {emp.shiftName}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      {/* Progress Bar & Counter */}
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <span className="text-xs font-bold text-slate-800 font-mono">
-                            {emp.completedItems}/{emp.totalItems} Checked
-                          </span>
-                          <span className="text-[10px] text-slate-400 block">{emp.progressPercent}% complete</span>
-                        </div>
-                        <div className="h-2 w-20 rounded-full bg-slate-100 overflow-hidden">
-                          <div
-                            style={{ width: `${emp.progressPercent}%` }}
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              emp.isFullyCompleted ? 'bg-emerald-600' : 'bg-blue-600'
-                            }`}
-                          />
-                        </div>
-                      </div>
-
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${
-                          emp.isFullyCompleted
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : emp.completedItems > 0
-                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                            : 'bg-slate-100 text-slate-600 border-slate-200'
-                        }`}
-                      >
-                        {emp.isFullyCompleted ? 'Done' : emp.completedItems > 0 ? 'In Progress' : 'Not Started'}
-                      </span>
-
-                      {isExpanded ? (
-                        <ChevronUp className="h-4 w-4 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-slate-400" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Expanded Item Breakdown */}
-                  {isExpanded && (
-                    <div className="mt-3 pt-3 border-t border-slate-100 pl-12 space-y-2">
-                      <span className="text-[11px] font-semibold text-slate-500 block uppercase tracking-wider mb-2">
-                        Checklist Items Breakdown:
-                      </span>
-                      {emp.checklistItems.map((item: any, i: number) => (
-                        <div
-                          key={item.checklistId || i}
-                          className="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50 border border-slate-100"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`h-4 w-4 rounded flex items-center justify-center text-[10px] font-bold ${
-                                item.isCompleted
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'border border-slate-300 bg-white text-transparent'
-                              }`}
-                            >
-                              ✓
-                            </span>
-                            <span
-                              className={`font-medium ${
-                                item.isCompleted ? 'text-slate-800' : 'text-slate-500'
-                              }`}
-                            >
-                              {item.title}
-                            </span>
-                            {item.isRequired && <span className="text-[10px] text-red-500 font-bold">*</span>}
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            {item.comments && (
-                              <span className="text-[11px] text-slate-500 italic max-w-xs truncate">
-                                "{item.comments}"
-                              </span>
-                            )}
-                            <span
-                              className={`font-mono text-[10px] font-medium ${
-                                item.isCompleted ? 'text-emerald-700' : 'text-slate-400'
-                              }`}
-                            >
-                              {item.isCompleted && item.completedAt
-                                ? `Checked at ${new Date(item.completedAt).toLocaleTimeString([], {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })}`
-                                : 'Pending'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
       </div>
     </div>
   );
