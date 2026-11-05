@@ -30,9 +30,9 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-50">
       <Header />
-      <div className="flex">
+      <div className="flex flex-1 overflow-hidden">
         <EmployeeSidebar />
         <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
           {children}
@@ -41,3 +41,4 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
     </div>
   );
 }
+

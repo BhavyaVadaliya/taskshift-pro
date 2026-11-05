@@ -242,3 +242,4 @@ The system is architected to support both PostgreSQL (production standard) and S
 - **Server-Side Validation**: Task completion timestamps, shift clock-in times, and checklist states are stamped server-side in UTC to prevent client tampering.
 - **Audit Logging**: Any administrative attendance correction requires a compliance reason and is permanently recorded in `AuditLog`.
 - **Role-Based Access Control**: Non-admin users are strictly blocked from `/admin/*` pages and API routes via JWT cookie verification.
+

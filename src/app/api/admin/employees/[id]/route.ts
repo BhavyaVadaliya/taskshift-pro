@@ -193,3 +193,4 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+

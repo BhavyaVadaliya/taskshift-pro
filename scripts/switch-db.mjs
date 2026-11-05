@@ -17,3 +17,4 @@ if (target === 'postgres') {
   console.error('Usage: node scripts/switch-db.mjs [postgres|sqlite]');
   process.exit(1);
 }
+

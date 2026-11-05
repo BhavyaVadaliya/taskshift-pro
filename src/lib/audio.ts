@@ -74,3 +74,4 @@ class SoundPlayer {
 }
 
 export const soundPlayer = new SoundPlayer();
+

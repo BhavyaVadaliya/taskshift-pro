@@ -56,3 +56,4 @@ export async function POST(req: NextRequest) {
     message: `Break ended. Duration: ${durationMinutes} minutes.`,
   });
 }
+

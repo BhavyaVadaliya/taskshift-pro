@@ -380,3 +380,4 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([timestamp])
 }
+

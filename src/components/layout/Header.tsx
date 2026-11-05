@@ -46,7 +46,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6">
+    <header className="sticky top-0 z-40 flex h-16 shrink-0 w-full items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6">
       {/* Left: Brand & Mobile Title */}
       <div className="flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white font-bold shadow-sm">
@@ -230,3 +230,4 @@ export function Header() {
     </header>
   );
 }
+

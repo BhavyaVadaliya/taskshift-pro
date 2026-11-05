@@ -149,3 +149,4 @@ export interface CompanySettingsDTO {
   };
   holidayCalendar: Array<{ id: string; name: string; date: string }>;
 }
+

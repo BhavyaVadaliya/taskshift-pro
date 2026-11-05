@@ -140,3 +140,4 @@ export function clearAuthCookie(response: NextResponse): void {
     maxAge: 0,
   });
 }
+

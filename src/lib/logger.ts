@@ -62,3 +62,4 @@ export async function logAudit(params: {
     console.error('Failed to log audit:', error);
   }
 }
+
