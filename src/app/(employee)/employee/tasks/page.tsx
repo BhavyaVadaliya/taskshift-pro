@@ -19,6 +19,8 @@ import {
   ListChecks,
   Check,
   RotateCcw,
+  Power,
+  ShieldAlert,
 } from 'lucide-react';
 import { soundPlayer } from '@/lib/audio';
 
@@ -82,9 +84,36 @@ export default function EmployeeTasksPage() {
 
   const isShiftActive = Boolean(shiftData?.isShiftActive);
   const attendance = shiftData?.attendance;
+  const assignedShift = shiftData?.assignedShift;
   const shiftStartMs = attendance?.actualStart
     ? new Date(attendance.actualStart).getTime()
     : currentMs;
+
+  // Shift Toggle Handler
+  const handleToggleShift = async () => {
+    try {
+      setActionLoading('shift_toggle');
+      if (isShiftActive) {
+        if (confirm('Are you sure you want to end your shift? Tasks and timers will be paused.')) {
+          const res = await fetch('/api/employee/shift/end', { method: 'POST' });
+          if (res.ok) {
+            soundPlayer.playChime('success');
+            await fetchData();
+          }
+        }
+      } else {
+        const res = await fetch('/api/employee/shift/start', { method: 'POST' });
+        if (res.ok) {
+          soundPlayer.playChime('success');
+          await fetchData();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle shift:', err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   // Toggle checklist item completion
   const handleToggleChecklist = async (instanceId: string, checklistId: string, currentVal: boolean) => {
@@ -113,7 +142,7 @@ export default function EmployeeTasksPage() {
   // Quick action: check all pending items in a task
   const handleCheckAllPendingInTask = async (task: any) => {
     const pendingItems = task.checklists.filter((c: any) => {
-      const intervalMs = (c.timerMinutes || 30) * 60 * 1000;
+      const intervalMs = (c.timerMinutes || 60) * 60 * 1000;
       const refMs = c.completedAt ? new Date(c.completedAt).getTime() : shiftStartMs;
       const diffSec = Math.floor((intervalMs - (currentMs - refMs)) / 1000);
       return !c.isCompleted || (c.timerMinutes && diffSec <= 0);
@@ -144,11 +173,27 @@ export default function EmployeeTasksPage() {
 
   // Evaluate status and next due time for each checklist item
   const evaluatedTasks = useMemo(() => {
+    // If shift is inactive/OFF, tasks should NOT be marked pending or due
+    if (!isShiftActive) {
+      return tasks.map((task) => ({
+        ...task,
+        checklists: (task.checklists || []).map((item: any) => ({
+          ...item,
+          diffSec: 0,
+          isPending: false,
+          isRecurringDue: false,
+          secondsUntilNext: 0,
+        })),
+        taskPendingCount: 0,
+        isTaskPending: false,
+      }));
+    }
+
     return tasks.map((task) => {
       let taskPendingCount = 0;
 
       const evaluatedChecklists = (task.checklists || []).map((item: any) => {
-        const intervalMs = (item.timerMinutes || 30) * 60 * 1000;
+        const intervalMs = (item.timerMinutes || 60) * 60 * 1000;
         const refMs = item.completedAt ? new Date(item.completedAt).getTime() : shiftStartMs;
         const diffSec = Math.floor((intervalMs - (currentMs - refMs)) / 1000);
 
@@ -176,17 +221,21 @@ export default function EmployeeTasksPage() {
         isTaskPending: taskPendingCount > 0,
       };
     });
-  }, [tasks, currentMs, shiftStartMs]);
+  }, [tasks, currentMs, shiftStartMs, isShiftActive]);
 
-  // Separate tasks into pending vs all-done
-  const pendingTasks = evaluatedTasks.filter((t) => t.isTaskPending);
-  const completedTasks = evaluatedTasks.filter((t) => !t.isTaskPending);
+  // Separate tasks into pending vs all-done (only active during an active shift)
+  const pendingTasks = isShiftActive ? evaluatedTasks.filter((t) => t.isTaskPending) : [];
+  const completedTasks = isShiftActive ? evaluatedTasks.filter((t) => !t.isTaskPending) : [];
 
-  const totalPendingItems = evaluatedTasks.reduce((sum, t) => sum + t.taskPendingCount, 0);
-  const allTasksAreDone = evaluatedTasks.length > 0 && totalPendingItems === 0;
+  const totalPendingItems = isShiftActive
+    ? evaluatedTasks.reduce((sum, t) => sum + t.taskPendingCount, 0)
+    : 0;
+  const allTasksAreDone = isShiftActive && evaluatedTasks.length > 0 && totalPendingItems === 0;
 
   // Find all upcoming recurring checklist items across all tasks and identify the closest one
   const upcomingItems = useMemo(() => {
+    if (!isShiftActive) return [];
+
     const list: Array<{
       taskId: string;
       taskName: string;
@@ -213,19 +262,19 @@ export default function EmployeeTasksPage() {
 
     list.sort((a, b) => a.secondsUntilNext - b.secondsUntilNext);
     return list;
-  }, [evaluatedTasks]);
+  }, [evaluatedTasks, isShiftActive]);
 
   const nextDueItem = upcomingItems[0] || null;
 
-  // Sound chime when a pending task is ringing
+  // Sound chime when a pending task is ringing (ONLY if shift is active)
   useEffect(() => {
-    if (isMuted || pendingTasks.length === 0) return;
+    if (!isShiftActive || isMuted || pendingTasks.length === 0) return;
 
     const hasRingingItems = pendingTasks.some((t) =>
       t.checklists.some((c: any) => c.isRecurringDue)
     );
 
-    if (hasRingingItems && isShiftActive) {
+    if (hasRingingItems) {
       soundPlayer.playAlarm();
       const ringTimer = setInterval(() => {
         soundPlayer.playAlarm();
@@ -261,11 +310,29 @@ export default function EmployeeTasksPage() {
             My Scheduled Tasks & Checklists
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Pending tasks display with their interactive checklists. When all tasks are done, next task timers countdown.
+            {isShiftActive
+              ? 'Your shift is active. Pending tasks display below. When all tasks are done, next task timers countdown.'
+              : 'Your shift is currently OFF. Start your shift to activate task reminders and checklists.'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Shift Toggle Button in Header */}
+          <button
+            type="button"
+            onClick={handleToggleShift}
+            disabled={actionLoading === 'shift_toggle'}
+            className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold text-white shadow-sm transition active:scale-95 ${
+              isShiftActive
+                ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+                : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+            }`}
+            title={isShiftActive ? 'Click to End Shift' : 'Click to Start Shift & Activate Tasks'}
+          >
+            <Power className="h-3.5 w-3.5" />
+            <span>{isShiftActive ? 'Shift ON 🟢' : 'Toggle Shift ON ⚪'}</span>
+          </button>
+
           {/* Mute / Unmute Button */}
           <button
             type="button"
@@ -293,8 +360,78 @@ export default function EmployeeTasksPage() {
         </div>
       </div>
 
-      {/* CASE 1: ALL TASKS ARE DONE -> SHOW TIMER FOR NEXT TASKS */}
-      {allTasksAreDone && (
+      {/* STATE 1: SHIFT IS OFF / INACTIVE -> SHOW SHIFT START PROMPT */}
+      {!isShiftActive && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm text-center">
+            <div className="max-w-md mx-auto space-y-4">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 border border-slate-200">
+                <Power className="h-7 w-7 text-slate-600" />
+              </div>
+
+              <div>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-0.5 text-xs font-bold text-slate-600 border border-slate-200 mb-2">
+                  Shift is Inactive (OFF)
+                </span>
+                <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                  Your Shift Has Not Started Yet
+                </h2>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  Scheduled tasks, individual timers, and alarm bells will activate as soon as you toggle ON your shift.
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleToggleShift}
+                  disabled={actionLoading === 'shift_toggle'}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-6 py-3 text-sm font-bold text-white shadow-md shadow-blue-200 transition active:scale-95"
+                >
+                  <Power className="h-4 w-4" />
+                  <span>Start Shift & Activate Tasks</span>
+                </button>
+              </div>
+
+              {assignedShift && (
+                <div className="text-[11px] text-slate-400 font-mono pt-1">
+                  Assigned Shift: <strong>{assignedShift.name}</strong> ({assignedShift.startTime} – {assignedShift.endTime})
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Preview of Configured Checklist Tasks */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <div className="flex items-center gap-2">
+                <ListChecks className="h-4 w-4 text-blue-600" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Configured Tasks Ready For Your Shift (7 Tasks)
+                </h3>
+              </div>
+              <span className="text-[10px] text-slate-400 font-medium">Starts with shift</span>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {tasks.flatMap((t) => t.checklists || []).map((item: any, idx: number) => (
+                <div key={item.id || idx} className="py-2.5 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <span className="h-2 w-2 rounded-full bg-slate-300" />
+                    <span className="font-semibold text-slate-800">{item.title}</span>
+                  </div>
+                  <span className="rounded-md bg-slate-100 text-slate-600 px-2 py-0.5 text-[10px] font-mono font-medium">
+                    Every {item.timerMinutes || 60}m
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STATE 2: SHIFT IS ACTIVE AND ALL TASKS ARE DONE -> SHOW NEXT TASK COUNTDOWN */}
+      {isShiftActive && allTasksAreDone && (
         <div className="space-y-6 animate-in fade-in duration-500">
           {/* Hero Celebration & Countdown Banner */}
           <div className="rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50/80 via-white to-blue-50/50 p-6 sm:p-8 shadow-sm text-center relative overflow-hidden ring-1 ring-emerald-100">
@@ -462,8 +599,8 @@ export default function EmployeeTasksPage() {
         </div>
       )}
 
-      {/* CASE 2: TASKS ARE PENDING -> SHOW TASKS WITH CHECKLISTS */}
-      {!allTasksAreDone && (
+      {/* STATE 3: SHIFT IS ACTIVE AND TASKS ARE PENDING -> SHOW TASKS WITH CHECKLISTS */}
+      {isShiftActive && !allTasksAreDone && (
         <div className="space-y-6">
           {/* Search & Category Filter */}
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-sm">
