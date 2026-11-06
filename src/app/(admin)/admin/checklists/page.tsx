@@ -20,11 +20,11 @@ import { soundPlayer } from '@/lib/audio';
 const DEFAULT_TASKS = [
   { title: 'Bold Desk - ticket software', timerMinutes: 15, targetTime: '09:15', isRequired: true },
   { title: 'WP engine', timerMinutes: 60, targetTime: '10:00', isRequired: true },
-  { title: 'Ms teams - A1p tier 1 support new msgs', timerMinutes: 15, targetTime: '09:30', isRequired: true },
-  { title: 'Twillio Tasks - running more than 1 hr', timerMinutes: 60, targetTime: '11:00', isRequired: true },
-  { title: 'outlook - new emails or replies from henry or etc', timerMinutes: 30, targetTime: '10:30', isRequired: true },
-  { title: 'Twilio status page', timerMinutes: 60, targetTime: '11:30', isRequired: true },
-  { title: 'Pantheon status page', timerMinutes: 60, targetTime: '12:00', isRequired: true },
+  { title: 'Ms teams - A1p tier 1 support new msgs', timerMinutes: 60, targetTime: '10:00', isRequired: true },
+  { title: 'Twillio Tasks - running more than 1 hr', timerMinutes: 60, targetTime: '10:00', isRequired: true },
+  { title: 'outlook - new emails or replies from henry or etc', timerMinutes: 60, targetTime: '10:00', isRequired: true },
+  { title: 'Twilio status page', timerMinutes: 60, targetTime: '10:00', isRequired: true },
+  { title: 'Pantheon status page', timerMinutes: 60, targetTime: '10:00', isRequired: true },
 ];
 
 export default function AdminChecklistsPage() {
