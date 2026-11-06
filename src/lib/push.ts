@@ -52,7 +52,7 @@ export async function sendPushToUser(
     icon: payload.icon || '/icon-192.png',
     badge: payload.badge || '/badge-72.png',
     data: {
-      url: payload.data?.url || '/employee/dashboard',
+      url: payload.data?.url || '/employee/tasks',
       taskInstanceId: payload.data?.taskInstanceId,
       type: payload.data?.type || 'REMINDER',
       timestamp: Date.now(),

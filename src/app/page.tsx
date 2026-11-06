@@ -15,7 +15,7 @@ export default function RootPage() {
       } else if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
         router.replace('/admin/dashboard');
       } else {
-        router.replace('/employee/dashboard');
+        router.replace('/employee/tasks');
       }
     }
   }, [user, loading, router]);

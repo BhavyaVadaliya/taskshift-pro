@@ -429,7 +429,7 @@ export async function PUT(req: NextRequest) {
       sendPushToUser(emp.id, {
         title: '📋 Daily Checklist Updated',
         body: `Admin updated "${updatedTask.name}". Please open your dashboard to view the checklist.`,
-        data: { url: '/employee/dashboard', type: 'CHECKLIST_UPDATE' },
+        data: { url: '/employee/tasks', type: 'CHECKLIST_UPDATE' },
       }).catch(() => {});
     }
 

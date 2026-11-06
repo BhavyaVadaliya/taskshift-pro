@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const result = await sendPushToUser(auth.user.id, {
       title: '🔔 Test Notification System',
       body: 'Browser push notifications are working perfectly on this device!',
-      data: { url: '/employee/dashboard', type: 'TEST' },
+      data: { url: '/employee/tasks', type: 'TEST' },
     });
 
     // Also log an in-app notification

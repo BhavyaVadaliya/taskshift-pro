@@ -238,7 +238,7 @@ export async function runSchedulerTick() {
           body: schedule?.message || `Scheduled task "${task.name}" is ready to start. Please check your checklist.`,
           data: {
             taskInstanceId: instance.id,
-            url: `/employee/dashboard?task=${instance.id}`,
+            url: `/employee/tasks?task=${instance.id}`,
             type: 'TASK_REMINDER',
           },
         });
@@ -283,7 +283,7 @@ export async function runSchedulerTick() {
         body: `Task "${task.name}" was due at ${task.dueTime}. Please complete your remaining items now.`,
         data: {
           taskInstanceId: instance.id,
-          url: `/employee/dashboard?task=${instance.id}`,
+          url: `/employee/tasks?task=${instance.id}`,
           type: 'OVERDUE_ALERT',
         },
       });

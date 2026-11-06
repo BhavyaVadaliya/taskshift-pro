@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         designation: user.profile?.designation || null,
         assignedShift: user.profile?.assignedShift || null,
       },
-      redirectUrl: user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/employee/dashboard',
+      redirectUrl: user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/employee/tasks',
     });
 
     setAuthCookie(response, token, Boolean(rememberMe));

@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
   CheckSquare,
   History,
   UserCheck,
@@ -12,7 +11,6 @@ import {
 import { cn } from '@/lib/utils';
 
 const employeeNavItems = [
-  { label: 'My Dashboard', href: '/employee/dashboard', icon: LayoutDashboard },
   { label: 'My Tasks', href: '/employee/tasks', icon: CheckSquare },
   { label: 'Task History', href: '/employee/history', icon: History },
   { label: 'My Profile', href: '/employee/profile', icon: UserCheck },

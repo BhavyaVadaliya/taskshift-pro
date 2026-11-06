@@ -15,7 +15,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       if (!user) {
         router.replace('/login');
       } else if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-        router.replace('/employee/dashboard');
+        router.replace('/employee/tasks');
       }
     }
   }, [user, loading, router]);
