@@ -142,7 +142,7 @@ export default function EmployeeHistoryPage() {
             Task Execution & Verification History
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Exact timestamp of every task completed and next scheduled check times (+15m / +1hr).
+            Exact timestamp of every task completed and next scheduled check times (+10m / +1hr).
           </p>
         </div>
 
@@ -227,7 +227,7 @@ export default function EmployeeHistoryPage() {
           <div className="text-xl font-bold font-mono text-slate-900">
             {tasks.length} Configured Tasks
           </div>
-          <span className="text-[10px] text-slate-500">1x 15m • 6x 1hr intervals</span>
+          <span className="text-[10px] text-slate-500">1x 10m • 6x 1hr intervals</span>
         </div>
 
         {/* Total Checks Logged Today */}
@@ -264,7 +264,7 @@ export default function EmployeeHistoryPage() {
               </h2>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              When a task is checked, its next verification time is automatically scheduled (15m or 1hr later).
+              When a task is checked, its next verification time is automatically scheduled (10m or 1hr later).
             </p>
           </div>
           <span className="text-[11px] text-slate-400 font-mono">
@@ -293,7 +293,7 @@ export default function EmployeeHistoryPage() {
                 </tr>
               ) : (
                 tasks.map((task: any) => {
-                  const isBoldDesk = task.timerMinutes === 15;
+                  const isBoldDesk = task.timerMinutes === 10 || task.title?.toLowerCase().includes('bold desk');
                   const isActionPending = actionLoading === task.id;
 
                   // Compute live remaining seconds
@@ -323,7 +323,7 @@ export default function EmployeeHistoryPage() {
                       <td className="py-3.5 px-3">
                         <span className="rounded-md bg-amber-50 text-amber-900 px-2 py-0.5 text-[11px] font-semibold border border-amber-200 font-mono inline-flex items-center gap-1">
                           <Timer className="h-3 w-3 text-amber-600" />
-                          {task.timerMinutes === 15 ? 'Every 15 min' : 'Every 1 hr'}
+                          {task.timerMinutes < 60 ? `Every ${task.timerMinutes} min` : 'Every 1 hr'}
                         </span>
                       </td>
 
@@ -503,7 +503,7 @@ export default function EmployeeHistoryPage() {
                       {/* Set Interval */}
                       <td className="py-3 px-3 font-mono">
                         <span className="rounded-md bg-amber-50 text-amber-900 px-2 py-0.5 text-[10px] font-semibold border border-amber-200">
-                          +{log.intervalMinutes} min ({log.intervalMinutes === 15 ? '15m' : '1 hr'})
+                          +{log.intervalMinutes} min ({log.intervalMinutes < 60 ? `${log.intervalMinutes}m` : '1 hr'})
                         </span>
                       </td>
 

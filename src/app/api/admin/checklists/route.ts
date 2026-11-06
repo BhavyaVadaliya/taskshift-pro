@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
         isPaused: false,
         checklists: {
           create: [
-            { title: 'Bold Desk - ticket software', timerMinutes: 15, targetTime: '09:15', isRequired: true, sortOrder: 0 },
+            { title: 'Bold Desk - ticket software', timerMinutes: 10, targetTime: '09:10', isRequired: true, sortOrder: 0 },
             { title: 'WP engine', timerMinutes: 60, targetTime: '10:00', isRequired: true, sortOrder: 1 },
             { title: 'Ms teams - A1p tier 1 support new msgs', timerMinutes: 60, targetTime: '10:00', isRequired: true, sortOrder: 2 },
             { title: 'Twillio Tasks - running more than 1 hr', timerMinutes: 60, targetTime: '10:00', isRequired: true, sortOrder: 3 },

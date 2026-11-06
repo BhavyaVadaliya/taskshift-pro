@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
     checkedAt: string; // ISO
     checkedAtTime: string; // "11:51:18 AM"
     checkedAtDate: string; // "Nov 6, 2026"
-    intervalMinutes: number; // 15 or 60
+    intervalMinutes: number; // 10 or 60
     nextDueAt: string; // ISO
     nextDueAtTime: string; // "12:06:18 PM"
     comments?: string;

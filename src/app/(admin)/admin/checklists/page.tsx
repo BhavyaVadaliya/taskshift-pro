@@ -18,7 +18,7 @@ import { getTodayDateString } from '@/lib/utils';
 import { soundPlayer } from '@/lib/audio';
 
 const DEFAULT_TASKS = [
-  { title: 'Bold Desk - ticket software', timerMinutes: 15, targetTime: '09:15', isRequired: true },
+  { title: 'Bold Desk - ticket software', timerMinutes: 10, targetTime: '09:10', isRequired: true },
   { title: 'WP engine', timerMinutes: 60, targetTime: '10:00', isRequired: true },
   { title: 'Ms teams - A1p tier 1 support new msgs', timerMinutes: 60, targetTime: '10:00', isRequired: true },
   { title: 'Twillio Tasks - running more than 1 hr', timerMinutes: 60, targetTime: '10:00', isRequired: true },
@@ -365,6 +365,7 @@ export default function AdminChecklistsPage() {
                         className="bg-transparent text-xs font-semibold text-amber-900 focus:outline-none cursor-pointer"
                         title="Alert Ring Interval"
                       >
+                        <option value={10}>Ring every 10 min</option>
                         <option value={15}>Ring every 15 min</option>
                         <option value={20}>Ring every 20 min</option>
                         <option value={30}>Ring every 30 min</option>

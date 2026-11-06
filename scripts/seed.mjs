@@ -245,7 +245,7 @@ async function main() {
       isPaused: false,
       checklists: {
         create: [
-          { title: 'Bold Desk - ticket software', isRequired: true, sortOrder: 0, timerMinutes: 15, targetTime: '09:15' },
+          { title: 'Bold Desk - ticket software', isRequired: true, sortOrder: 0, timerMinutes: 10, targetTime: '09:10' },
           { title: 'WP engine', isRequired: true, sortOrder: 1, timerMinutes: 60, targetTime: '10:00' },
           { title: 'Ms teams - A1p tier 1 support new msgs', isRequired: true, sortOrder: 2, timerMinutes: 60, targetTime: '10:00' },
           { title: 'Twillio Tasks - running more than 1 hr', isRequired: true, sortOrder: 3, timerMinutes: 60, targetTime: '10:00' },
