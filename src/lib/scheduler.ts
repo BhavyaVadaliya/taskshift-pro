@@ -333,11 +333,62 @@ export async function runSchedulerTick() {
     }
   }
 
+  // 4. Check for mouse inactivity on all currently clocked-in employees (15+ minutes)
+  const clockedInEmployees = await prisma.shiftAttendance.findMany({
+    where: {
+      date: dateStr,
+      status: { in: ['ACTIVE', 'ON_TIME', 'LATE'] },
+      actualEnd: null,
+    },
+    include: {
+      user: {
+        include: { profile: true },
+      },
+    },
+  });
+
+  let flaggedInactivities = 0;
+  for (const att of clockedInEmployees) {
+    const profile = att.user?.profile;
+    if (!profile) continue;
+
+    const lastActive = profile.lastActiveAt ? new Date(profile.lastActiveAt) : new Date(att.actualStart);
+    const idleMs = now.getTime() - lastActive.getTime();
+    const idleMins = Math.floor(idleMs / 60000);
+
+    if (idleMins >= 15 && !profile.isIdle) {
+      await prisma.employeeProfile.update({
+        where: { id: profile.id },
+        data: {
+          isIdle: true,
+          idleSince: lastActive,
+        },
+      });
+
+      // Log in EmployeeActivityLog
+      await prisma.employeeActivityLog.create({
+        data: {
+          userId: att.userId,
+          action: 'MOUSE_INACTIVE_15M',
+          details: JSON.stringify({
+            idleMinutes: idleMins,
+            idleStartedAt: lastActive.toISOString(),
+            detectedAt: now.toISOString(),
+            notes: `Automated detection: Employee has not used mouse or interacted for ${idleMins} minutes during active shift.`,
+          }),
+        },
+      });
+
+      flaggedInactivities++;
+    }
+  }
+
   return {
     timestamp: now.toISOString(),
     notificationsSent,
     overdueMarked,
     flaggedLogouts,
+    flaggedInactivities,
   };
 }
 

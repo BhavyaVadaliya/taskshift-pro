@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/components/providers/AuthProvider';
 import { NotificationProvider } from '@/components/providers/NotificationProvider';
+import { ActivityTracker } from '@/components/providers/ActivityTracker';
 
 export const metadata: Metadata = {
   title: 'TaskShift Pro | Employee Task & Shift Reminder System',
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900">
         <AuthProvider>
           <NotificationProvider>
+            <ActivityTracker />
             {children}
           </NotificationProvider>
         </AuthProvider>

@@ -114,6 +114,9 @@ model EmployeeProfile {
   accountStatus      AccountStatus  @default(ACTIVE)
   joiningDate        DateTime       @default(now())
   avatarUrl          String?
+  lastActiveAt       DateTime?
+  isIdle             Boolean        @default(false)
+  idleSince          DateTime?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 

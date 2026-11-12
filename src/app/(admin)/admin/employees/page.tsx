@@ -27,6 +27,7 @@ import {
   ListChecks,
   ShieldCheck,
   Check,
+  MousePointer,
 } from 'lucide-react';
 import { getTodayDateString } from '@/lib/utils';
 
@@ -64,7 +65,7 @@ export default function AdminEmployeesPage() {
   const [historyLoading, setHistoryLoading] = useState<boolean>(false);
   const [historySearch, setHistorySearch] = useState<string>('');
   const [historyTaskFilter, setHistoryTaskFilter] = useState<string>('');
-  const [historyActiveTab, setHistoryActiveTab] = useState<'ALL' | 'TASKS' | 'LOGS' | 'ATTENDANCE'>('ALL');
+  const [historyActiveTab, setHistoryActiveTab] = useState<'ALL' | 'TASKS' | 'LOGS' | 'MOUSE' | 'ATTENDANCE'>('ALL');
   const [historyCurrentMs, setHistoryCurrentMs] = useState<number>(Date.now());
 
   // Form states
@@ -388,7 +389,7 @@ export default function AdminEmployeesPage() {
                 <th className="py-3 px-3">Department</th>
                 <th className="py-3 px-3">Designation</th>
                 <th className="py-3 px-3">Assigned Shift</th>
-                <th className="py-3 px-3">Weekly Schedule</th>
+                <th className="py-3 px-3">Mouse Activity (15m+)</th>
                 <th className="py-3 px-3">Status</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
@@ -440,21 +441,18 @@ export default function AdminEmployeesPage() {
                     </td>
 
                     <td className="py-3 px-3">
-                      <div className="flex gap-0.5">
-                        {ALL_DAYS.map((d) => {
-                          const isWorkDay = emp.weeklyWorkingDays?.includes(d);
-                          return (
-                            <span
-                              key={d}
-                              className={`text-[9px] px-1 rounded font-mono ${
-                                isWorkDay ? 'bg-emerald-100 text-emerald-800 font-bold' : 'bg-slate-100 text-slate-400'
-                              }`}
-                            >
-                              {d.charAt(0)}
-                            </span>
-                          );
-                        })}
-                      </div>
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold border ${
+                          emp.mouseStatusType === 'IDLE_15M'
+                            ? 'bg-amber-50 text-amber-900 border-amber-300 animate-pulse'
+                            : emp.mouseStatusType === 'ACTIVE'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : 'bg-slate-50 text-slate-500 border-slate-200'
+                        }`}
+                      >
+                        <MousePointer className={`h-3 w-3 ${emp.mouseStatusType === 'IDLE_15M' ? 'text-amber-600' : emp.mouseStatusType === 'ACTIVE' ? 'text-emerald-600' : 'text-slate-400'}`} />
+                        <span>{emp.mouseStatusLabel || 'Shift Inactive ⚪'}</span>
+                      </span>
                     </td>
 
                     <td className="py-3 px-3">
@@ -971,7 +969,7 @@ export default function AdminEmployeesPage() {
             {/* Scrollable Content Body */}
             <div className="overflow-y-auto p-4 sm:p-6 space-y-6">
               {/* Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 shadow-sm">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block mb-0.5">
                     Assigned Shift
@@ -1008,6 +1006,16 @@ export default function AdminEmployeesPage() {
 
                 <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 shadow-sm">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 block mb-0.5">
+                    Mouse Activity (15m+)
+                  </span>
+                  <div className="text-sm font-bold text-slate-900 truncate">
+                    {employeeHistory?.mouseActivity?.statusLabel || 'Active'}
+                  </div>
+                  <span className="text-[10px] text-slate-500">15m idle flag tracker</span>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 shadow-sm">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block mb-0.5">
                     Interval Rule
                   </span>
                   <div className="text-sm font-bold text-slate-900">Dynamic Post-Check</div>
@@ -1016,7 +1024,7 @@ export default function AdminEmployeesPage() {
               </div>
 
               {/* Navigation Tabs */}
-              <div className="flex border-b border-slate-200 gap-4 text-xs font-semibold">
+              <div className="flex flex-wrap border-b border-slate-200 gap-4 text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setHistoryActiveTab('ALL')}
@@ -1049,6 +1057,17 @@ export default function AdminEmployeesPage() {
                   }`}
                 >
                   Verified Check Log ({employeeHistory?.historyLogs?.length || 0})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryActiveTab('MOUSE')}
+                  className={`pb-2.5 transition border-b-2 ${
+                    historyActiveTab === 'MOUSE'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Mouse Activity & 15m Idle Logs ({employeeHistory?.mouseActivity?.logs?.length || 0})
                 </button>
                 <button
                   type="button"
@@ -1409,6 +1428,173 @@ export default function AdminEmployeesPage() {
                               </td>
                             </tr>
                           ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 4: Mouse Activity & 15-Minute Inactivity Audit Trail */}
+              {(historyActiveTab === 'ALL' || historyActiveTab === 'MOUSE') && (
+                <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden ring-1 ring-slate-100">
+                  <div className="p-4 border-b border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <MousePointer className="h-4 w-4 text-amber-600" />
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                          Mouse Activity & 15-Minute Inactivity Audit Trail
+                        </h4>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Automatic detection of periods when employee did not move mouse or interact for 15+ minutes.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-bold border flex items-center gap-1.5 ${
+                          !employeeHistory?.shift?.isShiftActive
+                            ? 'bg-slate-100 text-slate-600 border-slate-200'
+                            : employeeHistory?.mouseActivity?.isIdle
+                            ? 'bg-red-50 text-red-700 border-red-200 animate-pulse'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        }`}
+                      >
+                        <MousePointer className="h-3 w-3" />
+                        <span>{employeeHistory?.mouseActivity?.statusLabel || 'Active'}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status Banner */}
+                  <div className="p-4 bg-slate-50/40 border-b border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                    <div className="p-3 rounded-xl bg-white border border-slate-200">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                        Current Idle Status
+                      </span>
+                      <div className="font-bold text-slate-800">
+                        {employeeHistory?.mouseActivity?.isIdle ? (
+                          <span className="text-red-600 font-extrabold flex items-center gap-1">
+                            <AlertTriangle className="h-3.5 w-3.5" /> Flagged Idle ({employeeHistory?.mouseActivity?.idleMinutes || 15}m without mouse)
+                          </span>
+                        ) : employeeHistory?.shift?.isShiftActive ? (
+                          <span className="text-emerald-600 font-extrabold flex items-center gap-1">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Working / Active Mouse
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 font-medium">Shift Off</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white border border-slate-200">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                        Last Mouse Movement Recorded
+                      </span>
+                      <div className="font-bold font-mono text-slate-800">
+                        {employeeHistory?.mouseActivity?.lastActiveAt ? (
+                          new Date(employeeHistory.mouseActivity.lastActiveAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                          })
+                        ) : (
+                          <span className="text-slate-400 font-normal">None recorded today</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white border border-slate-200">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                        15m+ Idle Incidents Today
+                      </span>
+                      <div className="font-bold font-mono text-slate-800">
+                        {(employeeHistory?.mouseActivity?.logs || []).filter((l: any) => l.action === 'MOUSE_INACTIVE_15M').length} Incidents
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Inactivity Events Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-100/60 text-slate-600 font-semibold text-[11px]">
+                          <th className="py-2.5 px-4 w-12 text-center">#</th>
+                          <th className="py-2.5 px-3">Event Timestamp</th>
+                          <th className="py-2.5 px-3">Activity Status</th>
+                          <th className="py-2.5 px-3">Duration Idle</th>
+                          <th className="py-2.5 px-4">Audit Details & Verification</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {historyLoading ? (
+                          <tr>
+                            <td colSpan={5} className="py-6 text-center text-xs text-slate-400">
+                              <RefreshCw className="h-4 w-4 animate-spin text-blue-600 inline mr-2" />
+                              Loading mouse activity log...
+                            </td>
+                          </tr>
+                        ) : !employeeHistory?.mouseActivity?.logs || employeeHistory.mouseActivity.logs.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-xs text-slate-400">
+                              <div className="flex flex-col items-center justify-center gap-1.5">
+                                <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                                <span className="font-semibold text-slate-700">No 15-Minute Inactivity Incidents Recorded</span>
+                                <span className="text-[11px] text-slate-400">
+                                  Employee maintained active mouse/keyboard movement during shift hours.
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          employeeHistory.mouseActivity.logs.map((log: any, index: number) => {
+                            const isInactiveAlert = log.action === 'MOUSE_INACTIVE_15M';
+                            return (
+                              <tr key={log.id} className={`hover:bg-slate-50/80 transition ${isInactiveAlert ? 'bg-amber-50/30' : ''}`}>
+                                <td className="py-2.5 px-4 text-center font-mono text-slate-400 font-medium">
+                                  {index + 1}
+                                </td>
+
+                                <td className="py-2.5 px-3 font-mono font-semibold text-slate-900">
+                                  {log.timeFormatted}
+                                </td>
+
+                                <td className="py-2.5 px-3">
+                                  <span
+                                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${
+                                      isInactiveAlert
+                                        ? 'bg-red-50 text-red-700 border-red-200'
+                                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    }`}
+                                  >
+                                    {isInactiveAlert ? (
+                                      <>
+                                        <AlertTriangle className="h-3 w-3 text-red-600" />
+                                        15m+ Inactivity (No Mouse)
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Check className="h-3 w-3 text-emerald-600" />
+                                        Activity Resumed
+                                      </>
+                                    )}
+                                  </span>
+                                </td>
+
+                                <td className="py-2.5 px-3 font-mono text-slate-800">
+                                  <span className="font-bold text-slate-900">{log.idleMinutes}m</span>
+                                  <span className="text-slate-400 text-[10px] ml-1">idle span</span>
+                                </td>
+
+                                <td className="py-2.5 px-4 text-slate-600 text-[11px]">
+                                  {log.notes || (isInactiveAlert
+                                    ? 'No mouse movement or keyboard input was detected for at least 15 minutes.'
+                                    : 'Employee returned to workstation and resumed mouse or keyboard interaction.')}
+                                </td>
+                              </tr>
+                            );
+                          })
                         )}
                       </tbody>
                     </table>

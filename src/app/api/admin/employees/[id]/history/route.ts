@@ -218,6 +218,59 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     take: 10,
   });
 
+  // Mouse inactivity logs for this employee
+  const mouseActivityLogs = await prisma.employeeActivityLog.findMany({
+    where: {
+      userId,
+      action: { in: ['MOUSE_INACTIVE_15M', 'MOUSE_ACTIVITY_RESUMED'] },
+      timestamp: { gte: startOfDay, lte: endOfDay },
+    },
+    orderBy: { timestamp: 'desc' },
+    take: 50,
+  });
+
+  const lastActive = employeeUser.profile?.lastActiveAt ? new Date(employeeUser.profile.lastActiveAt) : null;
+  let idleMinutes = 0;
+  if (lastActive) {
+    idleMinutes = Math.max(0, Math.floor((currentMs - lastActive.getTime()) / 60000));
+  } else if (attendance?.actualStart) {
+    idleMinutes = Math.max(0, Math.floor((currentMs - new Date(attendance.actualStart).getTime()) / 60000));
+  }
+
+  const isIdle = isShiftActive && (idleMinutes >= 15 || Boolean(employeeUser.profile?.isIdle));
+
+  const mouseStatusType = !isShiftActive ? 'OFFLINE' : isIdle ? 'IDLE_15M' : 'ACTIVE';
+  const mouseStatusLabel = !isShiftActive
+    ? 'Shift Inactive ⚪'
+    : isIdle
+    ? `⚠️ Inactive ${idleMinutes}m (No Mouse Activity)`
+    : `🟢 Active (${idleMinutes === 0 ? 'Just now' : `${idleMinutes}m ago`})`;
+
+  const parsedMouseLogs = mouseActivityLogs.map((log) => {
+    let details: any = {};
+    try {
+      details = log.details ? JSON.parse(log.details) : {};
+    } catch {
+      details = {};
+    }
+    return {
+      id: log.id,
+      action: log.action,
+      actionLabel:
+        log.action === 'MOUSE_INACTIVE_15M'
+          ? '15m+ Inactivity (No Mouse Movement)'
+          : 'Mouse Activity Resumed',
+      timestamp: log.timestamp.toISOString(),
+      timeFormatted: new Date(log.timestamp).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }),
+      idleMinutes: details.idleMinutes || details.totalIdleMinutes || 15,
+      notes: details.notes || '',
+    };
+  });
+
   return NextResponse.json({
     success: true,
     date,
@@ -231,6 +284,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       designation: employeeUser.profile?.designation || 'Specialist',
       assignedShift: employeeUser.profile?.assignedShift?.name || 'Morning Shift',
       accountStatus: employeeUser.profile?.accountStatus || 'ACTIVE',
+      lastActiveAt: employeeUser.profile?.lastActiveAt || null,
     },
     shift: {
       name: shift.name,
@@ -242,6 +296,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       lateMinutes: attendance?.lateMinutes || 0,
       totalDurationMinutes: attendance?.totalDurationMinutes || 0,
       attendanceStatus: attendance?.status || (isShiftActive ? 'PRESENT' : 'OFF'),
+    },
+    mouseActivity: {
+      isIdle,
+      idleMinutes,
+      statusType: mouseStatusType,
+      statusLabel: mouseStatusLabel,
+      lastActiveAt: employeeUser.profile?.lastActiveAt || null,
+      logs: parsedMouseLogs,
     },
     tasks: taskStatuses,
     historyLogs,
@@ -259,6 +321,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       totalChecksToday: historyLogs.length,
       activeTasksCount: checklists.length,
       isShiftActive,
+      isIdle,
     },
   });
 }

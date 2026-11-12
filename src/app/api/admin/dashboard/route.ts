@@ -75,11 +75,14 @@ export async function GET(req: NextRequest) {
 
   // Calculate Overview Metrics
   const totalEmployeesCount = employees.length;
+  const now = new Date();
+  const currentMs = now.getTime();
 
   let employeesWorkingCount = 0;
   let employeesOnBreakCount = 0;
   let employeesCompletedShiftCount = 0;
   let employeesNotStartedCount = 0;
+  let employeesIdleCount = 0;
 
   for (const emp of employees) {
     const att = attendanceMap.get(emp.id);
@@ -93,6 +96,18 @@ export async function GET(req: NextRequest) {
         employeesOnBreakCount++;
       } else {
         employeesWorkingCount++;
+      }
+
+      // Check mouse activity
+      const lastActive = emp.profile?.lastActiveAt ? new Date(emp.profile.lastActiveAt) : null;
+      let idleMins = 0;
+      if (lastActive) {
+        idleMins = Math.max(0, Math.floor((currentMs - lastActive.getTime()) / 60000));
+      } else if (att.actualStart) {
+        idleMins = Math.max(0, Math.floor((currentMs - new Date(att.actualStart).getTime()) / 60000));
+      }
+      if (idleMins >= 15 || emp.profile?.isIdle) {
+        employeesIdleCount++;
       }
     }
   }
@@ -146,6 +161,22 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const isShiftActive = Boolean(att && !att.actualEnd);
+    const lastActive = emp.profile?.lastActiveAt ? new Date(emp.profile.lastActiveAt) : null;
+    let idleMinutes = 0;
+    if (lastActive) {
+      idleMinutes = Math.max(0, Math.floor((currentMs - lastActive.getTime()) / 60000));
+    } else if (att?.actualStart) {
+      idleMinutes = Math.max(0, Math.floor((currentMs - new Date(att.actualStart).getTime()) / 60000));
+    }
+    const isIdle = isShiftActive && (idleMinutes >= 15 || Boolean(emp.profile?.isIdle));
+    const mouseStatus = !isShiftActive ? 'OFFLINE' : isIdle ? 'IDLE_15M' : 'ACTIVE';
+    const mouseStatusLabel = !isShiftActive
+      ? 'Shift Inactive ⚪'
+      : isIdle
+      ? `⚠️ Inactive ${idleMinutes}m (No Mouse)`
+      : `🟢 Active (${idleMinutes === 0 ? 'Just now' : `${idleMinutes}m ago`})`;
+
     return {
       userId: emp.id,
       employeeName: emp.profile?.fullName || 'Employee',
@@ -169,6 +200,13 @@ export async function GET(req: NextRequest) {
       shiftDurationMins,
       isLate: att?.isLate || false,
       lateMinutes: att?.lateMinutes || 0,
+      // Mouse activity metrics
+      isShiftActive,
+      lastActiveAt: emp.profile?.lastActiveAt || null,
+      isIdle,
+      idleMinutes,
+      mouseStatus,
+      mouseStatusLabel,
     };
   });
 
@@ -211,6 +249,48 @@ export async function GET(req: NextRequest) {
   const departments = await prisma.department.findMany({ select: { id: true, name: true } });
   const shifts = await prisma.shift.findMany({ select: { id: true, name: true } });
 
+  // Inactivity audit logs for selected date
+  const startOfDay = new Date(`${filterDate}T00:00:00.000Z`);
+  const endOfDay = new Date(`${filterDate}T23:59:59.999Z`);
+  const mouseInactivityLogs = await prisma.employeeActivityLog.findMany({
+    where: {
+      action: { in: ['MOUSE_INACTIVE_15M', 'MOUSE_ACTIVITY_RESUMED'] },
+      timestamp: { gte: startOfDay, lte: endOfDay },
+    },
+    include: {
+      user: { include: { profile: true } },
+    },
+    orderBy: { timestamp: 'desc' },
+    take: 40,
+  });
+
+  const parsedInactivityLogs = mouseInactivityLogs.map((log) => {
+    let details: any = {};
+    try {
+      details = log.details ? JSON.parse(log.details) : {};
+    } catch {
+      details = {};
+    }
+    return {
+      id: log.id,
+      employeeName: log.user?.profile?.fullName || 'Employee',
+      employeeId: log.user?.employeeId || '',
+      action: log.action,
+      actionLabel:
+        log.action === 'MOUSE_INACTIVE_15M'
+          ? '15m+ Inactivity (No Mouse Movement)'
+          : 'Mouse Activity Resumed',
+      timestamp: log.timestamp.toISOString(),
+      timeFormatted: new Date(log.timestamp).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }),
+      idleMinutes: details.idleMinutes || details.totalIdleMinutes || 15,
+      notes: details.notes || '',
+    };
+  });
+
   return NextResponse.json({
     success: true,
     metrics: {
@@ -219,6 +299,7 @@ export async function GET(req: NextRequest) {
       employeesNotStarted: employeesNotStartedCount,
       employeesOnBreak: employeesOnBreakCount,
       employeesCompletedShift: employeesCompletedShiftCount,
+      employeesIdle15mCount: employeesIdleCount,
       completedTasksToday,
       pendingTasks,
       overdueTasks,
@@ -244,6 +325,7 @@ export async function GET(req: NextRequest) {
       ],
     },
     liveActivity,
+    inactivityLogs: parsedInactivityLogs,
     filters: {
       departments,
       shifts,
