@@ -88,3 +88,4 @@ export function ActivityTracker() {
 
   return null; // Silent background listener
 }
+

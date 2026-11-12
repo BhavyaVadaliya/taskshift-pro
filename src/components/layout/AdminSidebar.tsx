@@ -9,12 +9,14 @@ import {
   Settings,
   ShieldCheck,
   ListChecks,
+  MousePointer,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'Daily Checklist', href: '/admin/checklists', icon: ListChecks, badge: 'All Users' },
+  { label: 'Mouse Activity', href: '/admin/mouse-activity', icon: MousePointer, badge: '15m Idle' },
   { label: 'Employees', href: '/admin/employees', icon: Users },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];
