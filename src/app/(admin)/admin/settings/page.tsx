@@ -25,7 +25,7 @@ export default function AdminSettingsPage() {
   // General Settings
   const [companyName, setCompanyName] = useState('Apex Enterprises Global');
   const [companyLogoUrl, setCompanyLogoUrl] = useState('');
-  const [timezone, setTimezone] = useState('UTC');
+  const [timezone, setTimezone] = useState('America/New_York');
   const [workingDays, setWorkingDays] = useState<string[]>(['MON', 'TUE', 'WED', 'THU', 'FRI']);
   const [gracePeriodMinutes, setGracePeriodMinutes] = useState(15);
   const [autoLogoutMinutes, setAutoLogoutMinutes] = useState(60);
@@ -208,8 +208,9 @@ export default function AdminSettingsPage() {
                 onChange={(e) => setTimezone(e.target.value)}
                 className="w-full rounded-lg border border-slate-200 p-2 text-xs focus:border-blue-600 focus:outline-none"
               >
-                <option value="UTC">UTC (Universal Coordinated Time)</option>
                 <option value="America/New_York">America/New York (EST/EDT)</option>
+                <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                <option value="UTC">UTC (Universal Coordinated Time)</option>
                 <option value="America/Chicago">America/Chicago (CST/CDT)</option>
                 <option value="America/Los_Angeles">America/Los Angeles (PST/PDT)</option>
                 <option value="Europe/London">Europe/London (GMT/BST)</option>

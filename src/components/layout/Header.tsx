@@ -29,15 +29,31 @@ export function Header() {
     requestPushPermission,
   } = useNotifications();
 
-  const [currentTime, setCurrentTime] = useState<string>('');
+  const [estTime, setEstTime] = useState<string>('');
+  const [istTime, setIstTime] = useState<string>('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+      setEstTime(
+        now.toLocaleTimeString('en-US', {
+          timeZone: 'America/New_York',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        })
+      );
+      setIstTime(
+        now.toLocaleTimeString('en-US', {
+          timeZone: 'Asia/Kolkata',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        })
       );
     };
     updateTime();
@@ -62,19 +78,34 @@ export function Header() {
         </div>
       </div>
 
-      {/* Middle: Live Ticking Clock & Push status */}
-      <div className="hidden md:flex items-center gap-4">
-        <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1 text-xs font-medium text-slate-700">
-          <Clock className="h-3.5 w-3.5 text-blue-600" />
-          <span>{currentTime || 'Loading...'}</span>
-          <span className="text-slate-400">|</span>
-          <span className="text-slate-500">UTC System Time</span>
+      {/* Middle: Live Ticking Dual Clocks (EST & IST) & Push status */}
+      <div className="hidden md:flex items-center gap-3">
+        <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-slate-50/90 px-3.5 py-1 text-xs font-medium text-slate-700 shadow-xs">
+          <Clock className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+
+          {/* EST Time */}
+          <div className="flex items-center gap-1.5">
+            <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-700">
+              EST
+            </span>
+            <span className="font-mono text-slate-800">{estTime || '--:--:--'}</span>
+          </div>
+
+          <span className="text-slate-300 font-light">|</span>
+
+          {/* IST Time */}
+          <div className="flex items-center gap-1.5">
+            <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">
+              IST
+            </span>
+            <span className="font-mono text-slate-800">{istTime || '--:--:--'}</span>
+          </div>
         </div>
 
         {pushPermission !== 'granted' && (
           <button
             onClick={requestPushPermission}
-            className="flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 transition"
+            className="flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 transition shadow-xs"
             title="Enable browser push notifications"
           >
             <Radio className="h-3 w-3 text-amber-600 animate-pulse" />
@@ -197,6 +228,18 @@ export function Header() {
                   <span className="inline-block mt-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
                     {user.role}
                   </span>
+                </div>
+
+                {/* Mobile EST & IST live clock display */}
+                <div className="md:hidden px-3 py-2 border-b border-slate-100 bg-slate-50/70 text-xs">
+                  <div className="flex items-center justify-between py-0.5">
+                    <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-700">EST</span>
+                    <span className="font-mono text-slate-800 font-medium">{estTime || '--:--:--'}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-0.5 mt-1">
+                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">IST</span>
+                    <span className="font-mono text-slate-800 font-medium">{istTime || '--:--:--'}</span>
+                  </div>
                 </div>
 
                 <div className="py-1">

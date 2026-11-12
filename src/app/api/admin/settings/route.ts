@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const settingsMap: Record<string, any> = {
     companyName: 'Apex Enterprises',
     companyLogoUrl: '',
-    timezone: 'UTC',
+    timezone: 'America/New_York',
     workingDays: ['MON', 'TUE', 'WED', 'THU', 'FRI'],
     defaultGracePeriodMinutes: 15,
     defaultAutoLogoutMinutes: 60,
