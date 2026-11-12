@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       ...(date ? { date } : {}),
       ...(employeeId ? { userId: employeeId } : {}),
       ...(shiftId ? { shiftId } : {}),
-      ...(status ? { status } : {}),
+      ...(status ? { status: status as any } : {}),
       user: {
         profile: {
           ...(departmentId ? { departmentId } : {}),

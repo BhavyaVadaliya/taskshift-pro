@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     where: {
       userId: auth.user.id,
       actualEnd: null,
-      status: { in: ['ACTIVE', 'ON_TIME', 'LATE'] },
+      status: { in: ['ACTIVE', 'ON_TIME', 'LATE'] as any },
     },
   });
 
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
         date: dateStr,
         actualStart: now,
         expectedEnd,
-        status,
+        status: status as any,
         isLate,
         lateMinutes,
         notes: isLate ? `Clocked in ${lateMinutes} minutes late (grace period: ${shift?.gracePeriodMinutes || 15}m)` : 'Clocked in on time',

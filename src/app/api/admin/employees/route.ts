@@ -79,8 +79,16 @@ export async function GET(req: NextRequest) {
       designation: emp.profile?.designation || 'Staff',
       assignedShiftId: emp.profile?.assignedShiftId || null,
       assignedShiftName: emp.profile?.assignedShift?.name || 'Standard',
-      weeklyWorkingDays: emp.profile?.weeklyWorkingDays ? JSON.parse(emp.profile.weeklyWorkingDays) : ['MON', 'TUE', 'WED', 'THU', 'FRI'],
-      workingHours: emp.profile?.workingHours ? JSON.parse(emp.profile.workingHours) : null,
+      weeklyWorkingDays: emp.profile?.weeklyWorkingDays
+        ? typeof emp.profile.weeklyWorkingDays === 'string'
+          ? JSON.parse(emp.profile.weeklyWorkingDays)
+          : emp.profile.weeklyWorkingDays
+        : ['MON', 'TUE', 'WED', 'THU', 'FRI'],
+      workingHours: emp.profile?.workingHours
+        ? typeof emp.profile.workingHours === 'string'
+          ? JSON.parse(emp.profile.workingHours)
+          : emp.profile.workingHours
+        : null,
       accountStatus: emp.profile?.accountStatus || 'ACTIVE',
       joiningDate: emp.profile?.joiningDate?.toISOString() || emp.createdAt.toISOString(),
       createdAt: emp.createdAt.toISOString(),
@@ -157,8 +165,8 @@ export async function POST(req: NextRequest) {
               departmentId: departmentId || null,
               designation: designation?.trim() || 'Staff',
               assignedShiftId: assignedShiftId || null,
-              weeklyWorkingDays: JSON.stringify(weeklyWorkingDays || ['MON', 'TUE', 'WED', 'THU', 'FRI']),
-              workingHours: workingHours ? JSON.stringify(workingHours) : null,
+              weeklyWorkingDays: (weeklyWorkingDays || ['MON', 'TUE', 'WED', 'THU', 'FRI']) as any,
+              workingHours: (workingHours ? JSON.stringify(workingHours) : undefined) as any,
               joiningDate: joiningDate ? new Date(joiningDate) : new Date(),
               accountStatus: 'ACTIVE',
             },

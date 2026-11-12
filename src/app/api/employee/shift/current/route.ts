@@ -21,9 +21,9 @@ export async function GET(req: NextRequest) {
       userId: auth.user.id,
       OR: [
         { date: dateStr },
-        { status: 'ACTIVE' },
-        { status: 'ON_TIME' },
-        { status: 'LATE' },
+        { status: 'ACTIVE' as any },
+        { status: 'ON_TIME' as any },
+        { status: 'LATE' as any },
       ],
     },
     include: {

@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
             departmentId: defaultDeptId,
             assignedShiftId: defaultShift?.id || null,
             accountStatus: 'ACTIVE',
-            weeklyWorkingDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']),
+            weeklyWorkingDays: ['MON', 'TUE', 'WED', 'THU', 'FRI'] as any,
           },
         },
       },

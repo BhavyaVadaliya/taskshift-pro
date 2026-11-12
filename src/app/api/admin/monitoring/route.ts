@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const instances = await prisma.taskInstance.findMany({
     where: {
       date: dateStr,
-      ...(status ? { status } : {}),
+      ...(status ? { status: status as any } : {}),
       ...(employeeId ? { userId: employeeId } : {}),
       task: {
         ...(departmentId ? { departmentId } : {}),

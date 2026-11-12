@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const updated = await prisma.taskInstance.update({
     where: { id: instanceId },
     data: {
-      status: 'IN_PROGRESS',
+      status: 'IN_PROGRESS' as any,
       startedAt: instance.startedAt || now,
     },
   });

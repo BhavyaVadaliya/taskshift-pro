@@ -61,7 +61,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           ...(dueTime ? { dueTime } : {}),
           ...(reminderTime ? { reminderTime } : {}),
           ...(repeatFrequency ? { repeatFrequency } : {}),
-          ...(repeatDays !== undefined ? { repeatDays: JSON.stringify(repeatDays) } : {}),
+          ...(repeatDays !== undefined ? { repeatDays: (typeof repeatDays === 'string' ? JSON.parse(repeatDays) : repeatDays) as any } : {}),
           ...(requiredCompletion !== undefined ? { requiredCompletion: Boolean(requiredCompletion) } : {}),
           ...(allowEarlyCompletion !== undefined ? { allowEarlyCompletion: Boolean(allowEarlyCompletion) } : {}),
           ...(isPaused !== undefined ? { isPaused: Boolean(isPaused) } : {}),

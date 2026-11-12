@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           dueTime: task.dueTime,
           reminderTime: task.reminderTime,
           repeatFrequency: task.repeatFrequency,
-          repeatDays: task.repeatDays,
+          repeatDays: (task.repeatDays || undefined) as any,
           requiredCompletion: task.requiredCompletion,
           allowEarlyCompletion: task.allowEarlyCompletion,
           isPaused: false,

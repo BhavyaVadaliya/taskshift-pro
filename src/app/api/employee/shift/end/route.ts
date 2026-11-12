@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     where: {
       userId: auth.user.id,
       actualEnd: null,
-      status: { in: ['ACTIVE', 'ON_TIME', 'LATE'] },
+      status: { in: ['ACTIVE', 'ON_TIME', 'LATE'] as any },
     },
     include: {
       breaks: true,
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     where: {
       userId: auth.user.id,
       date: attendance.date,
-      status: { in: ['NOT_STARTED', 'IN_PROGRESS', 'OVERDUE'] },
+      status: { in: ['NOT_STARTED', 'IN_PROGRESS', 'OVERDUE'] as any },
     },
   });
 
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
         id: { in: pendingTasks.map((t) => t.id) },
       },
       data: {
-        status: 'MISSED',
+        status: 'MISSED' as any,
       },
     });
     remainingNotice = ` (${pendingTasks.length} unfinished tasks marked as MISSED)`;
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       actualEnd: now,
       breakMinutes: totalBreakMins,
       totalDurationMinutes: netDurationMinutes,
-      status: 'COMPLETED',
+      status: 'COMPLETED' as any,
       notes: `${attendance.notes || ''} Clocked out at ${now.toLocaleTimeString()}.${remainingNotice}`.trim(),
     },
   });

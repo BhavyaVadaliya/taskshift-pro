@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   for (const s of settings) {
     try {
-      settingsMap[s.key] = JSON.parse(s.value);
+      settingsMap[s.key] = typeof s.value === 'string' ? JSON.parse(s.value) : s.value;
     } catch {
       settingsMap[s.key] = s.value;
     }

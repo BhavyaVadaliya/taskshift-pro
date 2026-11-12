@@ -53,7 +53,11 @@ export async function GET(req: NextRequest) {
     dueTime: t.dueTime,
     reminderTime: t.reminderTime,
     repeatFrequency: t.repeatFrequency,
-    repeatDays: t.repeatDays ? JSON.parse(t.repeatDays) : [],
+    repeatDays: t.repeatDays
+      ? typeof t.repeatDays === 'string'
+        ? JSON.parse(t.repeatDays)
+        : t.repeatDays
+      : [],
     requiredCompletion: t.requiredCompletion,
     allowEarlyCompletion: t.allowEarlyCompletion,
     isPaused: t.isPaused,
@@ -121,7 +125,7 @@ export async function POST(req: NextRequest) {
           dueTime,
           reminderTime: reminderTime || startTime,
           repeatFrequency: repeatFrequency || 'DAILY',
-          repeatDays: repeatDays ? JSON.stringify(repeatDays) : null,
+          repeatDays: (repeatDays ? (typeof repeatDays === 'string' ? JSON.parse(repeatDays) : repeatDays) : undefined) as any,
           requiredCompletion: requiredCompletion !== undefined ? Boolean(requiredCompletion) : true,
           allowEarlyCompletion: Boolean(allowEarlyCompletion),
           isPaused: false,

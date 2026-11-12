@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     where: {
       userId: auth.user.id,
       actualEnd: null,
-      status: { in: ['ACTIVE', 'ON_TIME', 'LATE'] },
+      status: { in: ['ACTIVE', 'ON_TIME', 'LATE'] as any },
     },
     include: { breaks: true },
   });

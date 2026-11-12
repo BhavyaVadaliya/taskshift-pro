@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const updated = await prisma.taskInstance.update({
     where: { id: instanceId },
     data: {
-      status: finalStatus,
+      status: finalStatus as any,
       completedAt: now,
       startedAt: instance.startedAt || now,
       delayMinutes,
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     details: {
       taskId: instance.taskId,
       taskName: instance.task.name,
-      status: finalStatus,
+      status: finalStatus as any,
       delayMinutes,
       completedAt: now.toISOString(),
     },

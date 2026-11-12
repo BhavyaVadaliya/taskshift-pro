@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   const settingsMap: Record<string, any> = {};
   for (const s of settings) {
     try {
-      settingsMap[s.key] = JSON.parse(s.value);
+      settingsMap[s.key] = typeof s.value === 'string' ? JSON.parse(s.value) : s.value;
     } catch {
       settingsMap[s.key] = s.value;
     }
@@ -37,10 +37,14 @@ export async function GET(req: NextRequest) {
       ...user,
       phone: fullUser?.profile?.phone,
       weeklyWorkingDays: fullUser?.profile?.weeklyWorkingDays
-        ? JSON.parse(fullUser.profile.weeklyWorkingDays)
+        ? typeof fullUser.profile.weeklyWorkingDays === 'string'
+          ? JSON.parse(fullUser.profile.weeklyWorkingDays)
+          : fullUser.profile.weeklyWorkingDays
         : null,
       workingHours: fullUser?.profile?.workingHours
-        ? JSON.parse(fullUser.profile.workingHours)
+        ? typeof fullUser.profile.workingHours === 'string'
+          ? JSON.parse(fullUser.profile.workingHours)
+          : fullUser.profile.workingHours
         : null,
       assignedShift: fullUser?.profile?.assignedShift,
     },

@@ -102,7 +102,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   for (const log of activityLogs) {
     try {
-      const details = log.details ? JSON.parse(log.details) : {};
+      const details = typeof log.details === 'string' ? JSON.parse(log.details) : (log.details as any || {});
       const c = checklistMap.get(details.checklistId);
       if (c) {
         const interval = c.timerMinutes || 60;
@@ -249,7 +249,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const parsedMouseLogs = mouseActivityLogs.map((log) => {
     let details: any = {};
     try {
-      details = log.details ? JSON.parse(log.details) : {};
+      details = typeof log.details === 'string' ? JSON.parse(log.details) : (log.details as any || {});
     } catch {
       details = {};
     }

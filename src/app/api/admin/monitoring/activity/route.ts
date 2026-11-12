@@ -118,7 +118,7 @@ export async function GET(req: NextRequest) {
   const parsedInactivityLogs = activityLogs.map((log) => {
     let details: any = {};
     try {
-      details = log.details ? JSON.parse(log.details) : {};
+      details = typeof log.details === 'string' ? JSON.parse(log.details) : (log.details as any || {});
     } catch {
       details = {};
     }

@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     where: {
       date: filterDate,
       userId: { in: employeeIds },
-      ...(filterStatus ? { status: filterStatus } : {}),
+      ...(filterStatus ? { status: filterStatus as any } : {}),
     },
     include: {
       task: {
@@ -267,7 +267,7 @@ export async function GET(req: NextRequest) {
   const parsedInactivityLogs = mouseInactivityLogs.map((log) => {
     let details: any = {};
     try {
-      details = log.details ? JSON.parse(log.details) : {};
+      details = typeof log.details === 'string' ? JSON.parse(log.details) : (log.details as any || {});
     } catch {
       details = {};
     }

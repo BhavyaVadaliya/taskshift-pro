@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
 
   for (const log of activityLogs) {
     try {
-      const details = log.details ? JSON.parse(log.details) : {};
+      const details = typeof log.details === 'string' ? JSON.parse(log.details) : (log.details as any || {});
       const c = checklistMap.get(details.checklistId);
       if (c) {
         const interval = c.timerMinutes || 60;

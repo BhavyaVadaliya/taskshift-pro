@@ -22,7 +22,7 @@ export async function logEmployeeActivity(params: {
       data: {
         userId: params.userId,
         action: params.action,
-        details: detailsStr,
+        details: (detailsStr || undefined) as any,
         ipAddress,
         userAgent,
       },
@@ -53,8 +53,8 @@ export async function logAudit(params: {
         action: params.action,
         entity: params.entity,
         entityId: params.entityId || null,
-        oldValues: params.oldValues ? JSON.stringify(params.oldValues) : null,
-        newValues: params.newValues ? JSON.stringify(params.newValues) : null,
+        oldValues: (params.oldValues || undefined) as any,
+        newValues: (params.newValues || undefined) as any,
         ipAddress,
       },
     });

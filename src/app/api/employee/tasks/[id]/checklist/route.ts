@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     await prisma.taskInstance.update({
       where: { id: instanceId },
       data: {
-        status: 'IN_PROGRESS',
+        status: 'IN_PROGRESS' as any,
         startedAt: instance.startedAt || now,
       },
     });
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     await prisma.taskInstance.update({
       where: { id: instanceId },
       data: {
-        status: isLate ? 'COMPLETED_LATE' : 'COMPLETED',
+        status: (isLate ? 'COMPLETED_LATE' : 'COMPLETED') as any,
         completedAt: instance.completedAt || now,
       },
     });
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     await prisma.taskInstance.update({
       where: { id: instanceId },
       data: {
-        status: 'IN_PROGRESS',
+        status: 'IN_PROGRESS' as any,
         completedAt: null,
       },
     });
