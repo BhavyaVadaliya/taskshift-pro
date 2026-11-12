@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Lock, Mail, Shield, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
@@ -34,12 +35,6 @@ export default function LoginPage() {
     } else {
       setError(result.error || 'Invalid credentials.');
     }
-  };
-
-  const fillQuickCredentials = (id: string, pass: string) => {
-    setLoginId(id);
-    setPassword(pass);
-    setError(null);
   };
 
   return (
@@ -80,7 +75,7 @@ export default function LoginPage() {
                   type="text"
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
-                  placeholder="admin@company.com or EMP101"
+                  placeholder="name@company.com or Employee ID"
                   className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
                   required
                 />
@@ -149,32 +144,16 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Login Credentials Bar */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2.5">
-              Quick Test Credentials
-            </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials('admin@company.com', 'admin123')}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 py-2 px-2.5 text-slate-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition"
+          {/* Sign Up / Register Link */}
+          <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+            <p className="text-xs text-slate-500">
+              Don&apos;t have an account?{' '}
+              <Link
+                href="/register"
+                className="font-semibold text-blue-600 hover:text-blue-700 hover:underline"
               >
-                <Shield className="h-3.5 w-3.5 text-blue-600" />
-                <span className="font-medium text-[11px]">Super Admin</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials('john.doe@company.com', 'employee123')}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 py-2 px-2.5 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                <span className="font-medium text-[11px]">Employee (John)</span>
-              </button>
-            </div>
-            <p className="mt-2 text-[10px] text-center text-slate-400">
-              Or use: <code className="text-slate-600 font-mono">sarah.j@company.com</code>, <code className="text-slate-600 font-mono">m.chen@company.com</code>
+                Create an account / Sign Up
+              </Link>
             </p>
           </div>
         </div>

@@ -11,9 +11,9 @@ async function hash(pw) {
 }
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('🌱 Initializing clean live database...');
 
-  // 1. Clean existing records in reverse dependency order
+  // 1. Clean existing dummy records in reverse dependency order
   await prisma.auditLog.deleteMany({});
   await prisma.employeeActivityLog.deleteMany({});
   await prisma.notificationLog.deleteMany({});
@@ -33,9 +33,17 @@ async function main() {
   await prisma.companySetting.deleteMany({});
   await prisma.user.deleteMany({});
 
-  console.log('Cleared existing data.');
+  console.log('Cleared all dummy and test records.');
 
   // 2. Create Departments
+  const deptTech = await prisma.department.create({
+    data: {
+      name: 'Technical Support',
+      code: 'TECH',
+      description: 'Infrastructure monitoring, bug tracking, and incident escalation',
+    },
+  });
+
   const deptSupport = await prisma.department.create({
     data: {
       name: 'Customer Support',
@@ -52,14 +60,6 @@ async function main() {
     },
   });
 
-  const deptTech = await prisma.department.create({
-    data: {
-      name: 'Technical Support',
-      code: 'TECH',
-      description: 'Infrastructure monitoring, bug tracking, and incident escalation',
-    },
-  });
-
   console.log('Created departments.');
 
   // 3. Create Shifts
@@ -70,7 +70,7 @@ async function main() {
       endTime: '18:00',
       breakDurationMinutes: 60,
       gracePeriodMinutes: 15,
-      workingDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']),
+      workingDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']),
       earlyLoginMinutes: 30,
       lateLoginRules: 'Clock-in after 09:15 AM is flagged as late.',
       autoLogoutMinutes: 60,
@@ -86,7 +86,7 @@ async function main() {
       endTime: '23:00',
       breakDurationMinutes: 60,
       gracePeriodMinutes: 15,
-      workingDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']),
+      workingDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']),
       earlyLoginMinutes: 30,
       lateLoginRules: 'Clock-in after 02:15 PM is flagged as late.',
       autoLogoutMinutes: 60,
@@ -102,7 +102,7 @@ async function main() {
       endTime: '07:00',
       breakDurationMinutes: 60,
       gracePeriodMinutes: 15,
-      workingDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']),
+      workingDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']),
       earlyLoginMinutes: 30,
       lateLoginRules: 'Clock-in after 10:15 PM is flagged as late.',
       autoLogoutMinutes: 60,
@@ -111,123 +111,33 @@ async function main() {
     },
   });
 
-  console.log('Created shifts (including overnight).');
+  console.log('Created operational shifts.');
 
-  // 4. Create Users (Super Admin, Admin, Employees)
-  const defaultAdminPass = await hash('admin123');
-  const defaultEmpPass = await hash('employee123');
+  // 4. Create Single Super Admin Account (No dummy employees)
+  const adminPasswordHash = await hash('Admin@2025!');
 
-  // Super Admin
   const superAdmin = await prisma.user.create({
     data: {
-      email: 'admin@company.com',
+      email: 'admin@taskshift.com',
       employeeId: 'ADM001',
-      passwordHash: defaultAdminPass,
+      passwordHash: adminPasswordHash,
       role: 'SUPER_ADMIN',
       isActive: true,
       profile: {
         create: {
-          fullName: 'Alexander Wright (Super Admin)',
-          phone: '+1-555-0100',
-          departmentId: deptOps.id,
-          designation: 'Managing Director / System Architect',
-          accountStatus: 'ACTIVE',
-        },
-      },
-    },
-  });
-
-  // Employee 1: John Doe (Morning Shift, Customer Support)
-  const empJohn = await prisma.user.create({
-    data: {
-      email: 'john.doe@company.com',
-      employeeId: 'EMP101',
-      passwordHash: defaultEmpPass,
-      role: 'EMPLOYEE',
-      isActive: true,
-      profile: {
-        create: {
-          fullName: 'John Doe',
-          phone: '+1-555-0101',
-          departmentId: deptSupport.id,
-          designation: 'Senior Support Specialist',
-          assignedShiftId: shiftMorning.id,
-          weeklyWorkingDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']),
-          accountStatus: 'ACTIVE',
-        },
-      },
-    },
-  });
-
-  // Employee 2: Sarah Jenkins (Morning Shift, Operations)
-  const empSarah = await prisma.user.create({
-    data: {
-      email: 'sarah.j@company.com',
-      employeeId: 'EMP102',
-      passwordHash: defaultEmpPass,
-      role: 'EMPLOYEE',
-      isActive: true,
-      profile: {
-        create: {
-          fullName: 'Sarah Jenkins',
-          phone: '+1-555-0102',
-          departmentId: deptOps.id,
-          designation: 'Operations Coordinator',
-          assignedShiftId: shiftMorning.id,
-          weeklyWorkingDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']),
-          accountStatus: 'ACTIVE',
-        },
-      },
-    },
-  });
-
-  // Employee 3: Michael Chen (Evening Shift, Technical Support)
-  const empMichael = await prisma.user.create({
-    data: {
-      email: 'm.chen@company.com',
-      employeeId: 'EMP103',
-      passwordHash: defaultEmpPass,
-      role: 'EMPLOYEE',
-      isActive: true,
-      profile: {
-        create: {
-          fullName: 'Michael Chen',
-          phone: '+1-555-0103',
+          fullName: 'System Administrator',
+          phone: '',
           departmentId: deptTech.id,
-          designation: 'Technical Support Engineer',
-          assignedShiftId: shiftEvening.id,
-          weeklyWorkingDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']),
+          designation: 'Managing Administrator',
           accountStatus: 'ACTIVE',
         },
       },
     },
   });
 
-  // Employee 4: Emily Davis (Night Shift, Technical Support)
-  const empEmily = await prisma.user.create({
-    data: {
-      email: 'emily.d@company.com',
-      employeeId: 'EMP104',
-      passwordHash: defaultEmpPass,
-      role: 'EMPLOYEE',
-      isActive: true,
-      profile: {
-        create: {
-          fullName: 'Emily Davis',
-          phone: '+1-555-0104',
-          departmentId: deptTech.id,
-          designation: 'Night NOC Engineer',
-          assignedShiftId: shiftNight.id,
-          weeklyWorkingDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']),
-          accountStatus: 'ACTIVE',
-        },
-      },
-    },
-  });
+  console.log('Created live Super Admin account.');
 
-  console.log('Created Users & Profiles.');
-
-  // 5. Create Standard Task with the 7 Default Checklist Tasks
+  // 5. Create Standard Daily Operational Checklist with the 7 Core Support Tasks
   const task1 = await prisma.task.create({
     data: {
       name: 'Daily Operational Checklist',
@@ -239,7 +149,7 @@ async function main() {
       dueTime: '18:00',
       reminderTime: '09:10',
       repeatFrequency: 'DAILY',
-      repeatDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']),
+      repeatDays: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']),
       requiredCompletion: true,
       allowEarlyCompletion: true,
       isPaused: false,
@@ -257,43 +167,32 @@ async function main() {
     },
   });
 
-  console.log('Created tasks and notification schedules.');
+  console.log('Created Daily Operational Checklist with the 7 core support tasks.');
 
-  // 6. Seed Company Settings
+  // 6. Seed Clean Company Settings
   await prisma.companySetting.createMany({
     data: [
-      { key: 'companyName', value: JSON.stringify('Apex Enterprises Global') },
+      { key: 'companyName', value: JSON.stringify('TaskShift Pro') },
       { key: 'timezone', value: JSON.stringify('UTC') },
-      { key: 'workingDays', value: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI']) },
+      { key: 'workingDays', value: JSON.stringify(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']) },
       { key: 'notificationSoundsEnabled', value: JSON.stringify(true) },
       { key: 'defaultGracePeriodMinutes', value: JSON.stringify(15) },
       { key: 'defaultAutoLogoutMinutes', value: JSON.stringify(60) },
       { key: 'reminderIntervalMinutes', value: JSON.stringify(15) },
-      { key: 'taskCategories', value: JSON.stringify(['General', 'Operations', 'Client Care', 'Reporting', 'Quality Audit', 'Maintenance']) },
+      { key: 'taskCategories', value: JSON.stringify(['Company Checklist', 'Operations', 'Technical Support', 'Client Care']) },
     ],
   });
 
-  // 7. Seed Holidays
-  const currentYear = new Date().getFullYear();
-  await prisma.holiday.createMany({
-    data: [
-      { name: "New Year's Day", date: `${currentYear}-01-01`, description: 'Company Holiday' },
-      { name: 'Labor Day', date: `${currentYear}-05-01`, description: 'International Workers Day' },
-      { name: 'Independence Day', date: `${currentYear}-07-04`, description: 'National Holiday' },
-      { name: 'Thanksgiving', date: `${currentYear}-11-26`, description: 'National Holiday' },
-      { name: 'Christmas Day', date: `${currentYear}-12-25`, description: 'Company Holiday' },
-    ],
-  });
-
-  console.log('✅ Seed completed successfully!');
+  console.log('✅ Clean live setup completed successfully!');
+  console.log('==================================================');
+  console.log('LIVE ADMIN CREDENTIALS:');
+  console.log('Email / Login ID: admin@taskshift.com (or ADM001)');
+  console.log('Password:         Admin@2025!');
+  console.log('Role:             SUPER_ADMIN');
   console.log('--------------------------------------------------');
-  console.log('Credentials for immediate testing:');
-  console.log('Super Admin: admin@company.com  (or ADM001) / admin123');
-  console.log('Employee 1:  john.doe@company.com (or EMP101) / employee123');
-  console.log('Employee 2:  sarah.j@company.com  (or EMP102) / employee123');
-  console.log('Employee 3:  m.chen@company.com   (or EMP103) / employee123');
-  console.log('Employee 4:  emily.d@company.com   (or EMP104) / employee123');
-  console.log('--------------------------------------------------');
+  console.log('Self-Registration: /register is active for new staff');
+  console.log('Dummy Data:       0 dummy records in system');
+  console.log('==================================================');
 }
 
 main()
@@ -304,4 +203,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
