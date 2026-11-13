@@ -509,7 +509,13 @@ export default function AdminDashboardPage() {
                           {emp.currentStatus === 'Working' && (
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                           )}
+                          {emp.currentStatus === 'On Break' && (
+                            <Coffee className="h-3 w-3 text-amber-600" />
+                          )}
                           {emp.currentStatus}
+                          {emp.currentStatus === 'On Break' && emp.activeBreak?.reason && (
+                            <span className="font-bold text-amber-800">({emp.activeBreak.reason})</span>
+                          )}
                         </span>
                       </td>
 
@@ -518,6 +524,11 @@ export default function AdminDashboardPage() {
                           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 text-slate-500 px-2 py-0.5 text-[10px] font-semibold border border-slate-200">
                             <MousePointer className="h-3 w-3 text-slate-400" />
                             Shift Off
+                          </span>
+                        ) : emp.currentStatus === 'On Break' ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-800 px-2 py-0.5 text-[10px] font-bold border border-amber-200">
+                            <Coffee className="h-3 w-3 text-amber-600" />
+                            Break ({emp.activeBreak?.reason || 'On Break'})
                           </span>
                         ) : emp.isIdle ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-red-50 text-red-700 px-2.5 py-0.5 text-[10px] font-bold border border-red-200 animate-pulse">
@@ -571,6 +582,132 @@ export default function AdminDashboardPage() {
                           </div>
                         ) : (
                           <span className="text-slate-300">No logs today</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Employee Break Logs & History Section */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Coffee className="h-4 w-4 text-amber-600" />
+              <h2 className="text-sm font-bold text-slate-900">
+                Employee Break Logs & History
+              </h2>
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">
+                {(data?.breaksToday || []).length} Recorded Today
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Chronological log of all employee breaks (Lunch, Washroom, Tea, etc.) with exact start/end timestamps and durations.
+            </p>
+          </div>
+
+          <div className="text-xs text-slate-500 font-mono">
+            Date: {selectedDate}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-100/60 text-[11px] font-semibold text-slate-600">
+                <th className="py-3 px-4 w-12 text-center">#</th>
+                <th className="py-3 px-3">Employee</th>
+                <th className="py-3 px-3">Department</th>
+                <th className="py-3 px-3">Break Type / Reason</th>
+                <th className="py-3 px-3">Start Time</th>
+                <th className="py-3 px-3">End Time</th>
+                <th className="py-3 px-3">Duration</th>
+                <th className="py-3 px-4">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {!data?.breaksToday || data.breaksToday.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-xs text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-1.5">
+                      <Coffee className="h-6 w-6 text-slate-300" />
+                      <span className="font-semibold text-slate-600">No Breaks Recorded Yet Today</span>
+                      <span className="text-[11px] text-slate-400">
+                        When employees start a break (Lunch, Washroom, Tea), it will appear here in real-time.
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                data.breaksToday.map((b: any, idx: number) => {
+                  const getReasonBadge = (reason: string) => {
+                    const r = (reason || '').toLowerCase();
+                    if (r.includes('lunch')) {
+                      return { bg: 'bg-amber-50 text-amber-900 border-amber-200', icon: '🍱' };
+                    }
+                    if (r.includes('washroom') || r.includes('restroom')) {
+                      return { bg: 'bg-blue-50 text-blue-900 border-blue-200', icon: '🚻' };
+                    }
+                    if (r.includes('tea') || r.includes('coffee')) {
+                      return { bg: 'bg-orange-50 text-orange-900 border-orange-200', icon: '☕' };
+                    }
+                    if (r.includes('prayer')) {
+                      return { bg: 'bg-purple-50 text-purple-900 border-purple-200', icon: '🤲' };
+                    }
+                    return { bg: 'bg-slate-100 text-slate-800 border-slate-200', icon: '⏸️' };
+                  };
+                  const badge = getReasonBadge(b.reason || '');
+
+                  return (
+                    <tr
+                      key={b.id || idx}
+                      className={`hover:bg-slate-50/80 transition ${b.isOngoing ? 'bg-amber-50/30' : ''}`}
+                    >
+                      <td className="py-3 px-4 text-center font-mono text-slate-400 font-medium">
+                        {idx + 1}
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="font-bold text-slate-900">{b.employeeName}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">{b.employeeId}</div>
+                      </td>
+                      <td className="py-3 px-3 text-slate-600 font-medium">
+                        {b.department}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${badge.bg}`}>
+                          <span>{badge.icon}</span>
+                          <span>{b.reason}</span>
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-mono text-slate-800">
+                        {b.startTimeFormatted}
+                      </td>
+                      <td className="py-3 px-3 font-mono text-slate-800">
+                        {b.isOngoing ? (
+                          <span className="text-amber-700 font-semibold italic">In Progress</span>
+                        ) : (
+                          b.endTimeFormatted
+                        )}
+                      </td>
+                      <td className="py-3 px-3 font-mono font-bold text-slate-800">
+                        {b.durationMinutes}m {b.isOngoing ? 'elapsed' : ''}
+                      </td>
+                      <td className="py-3 px-4">
+                        {b.isOngoing ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 text-[10px] font-bold animate-pulse">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-600 animate-ping" />
+                            Currently On Break
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 text-[10px] font-semibold">
+                            <Check className="h-3 w-3 text-emerald-600" />
+                            Completed
+                          </span>
                         )}
                       </td>
                     </tr>

@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
       },
       attendances: {
         where: { date: dateStr },
+        include: { breaks: true },
         take: 1,
       },
     },
@@ -37,11 +38,16 @@ export async function GET(req: NextRequest) {
   let activeWorkingCount = 0;
   let idleCount = 0;
   let clockedInCount = 0;
+  let onBreakCount = 0;
 
   const employeeStatuses = employees.map((emp) => {
     const attendance = emp.attendances?.[0];
     const isShiftActive = Boolean(attendance?.actualStart && !attendance?.actualEnd);
     if (isShiftActive) clockedInCount++;
+
+    const activeBreak = attendance?.breaks?.find((b) => b.endTime === null) || null;
+    const isOnBreak = Boolean(isShiftActive && activeBreak);
+    if (isOnBreak) onBreakCount++;
 
     const lastActive = emp.profile?.lastActiveAt ? new Date(emp.profile.lastActiveAt) : null;
     let idleMinutes = 0;
@@ -56,7 +62,10 @@ export async function GET(req: NextRequest) {
     }
 
     if (isShiftActive) {
-      if (idleMinutes >= 15 || emp.profile?.isIdle) {
+      if (isOnBreak) {
+        // User is on authorized break, do not flag as negative idle
+        isIdle = false;
+      } else if (idleMinutes >= 15 || emp.profile?.isIdle) {
         isIdle = true;
         idleCount++;
       } else {
@@ -64,12 +73,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    let statusType: 'ACTIVE' | 'IDLE_15M' | 'OFFLINE' = 'OFFLINE';
+    let statusType: 'ACTIVE' | 'IDLE_15M' | 'OFFLINE' | 'ON_BREAK' = 'OFFLINE';
     let statusLabel = 'Shift Inactive ⚪';
 
     if (!isShiftActive) {
       statusType = 'OFFLINE';
       statusLabel = 'Shift Inactive ⚪';
+    } else if (isOnBreak) {
+      statusType = 'ON_BREAK';
+      statusLabel = `⏸️ On Break (${activeBreak?.reason || 'Break'})`;
     } else if (isIdle) {
       statusType = 'IDLE_15M';
       statusLabel = `⚠️ Inactive ${idleMinutes}m (No Mouse Activity)`;
@@ -87,6 +99,9 @@ export async function GET(req: NextRequest) {
       designation: emp.profile?.designation || 'Staff',
       shiftName: emp.profile?.assignedShift?.name || 'Morning Shift',
       isShiftActive,
+      isOnBreak,
+      breakReason: activeBreak?.reason || null,
+      breakStartTime: activeBreak?.startTime ? activeBreak.startTime.toISOString() : null,
       lastActiveAt: emp.profile?.lastActiveAt || null,
       idleSince: emp.profile?.idleSince || null,
       idleMinutes,
@@ -151,6 +166,7 @@ export async function GET(req: NextRequest) {
       totalEmployees: employees.length,
       clockedInCount,
       activeWorkingCount,
+      onBreakCount,
       idleCount, // Employees idle for 15+ mins right now
     },
     employees: employeeStatuses,

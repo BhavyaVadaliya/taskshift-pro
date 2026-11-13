@@ -21,6 +21,11 @@ import {
   RotateCcw,
   Power,
   ShieldAlert,
+  Coffee,
+  Play,
+  Pause,
+  Utensils,
+  X,
 } from 'lucide-react';
 import { soundPlayer } from '@/lib/audio';
 
@@ -88,6 +93,15 @@ export default function EmployeeTasksPage() {
   const shiftStartMs = attendance?.actualStart
     ? new Date(attendance.actualStart).getTime()
     : currentMs;
+  const activeBreak = shiftData?.activeBreak || null;
+  const isOnBreak = Boolean(isShiftActive && activeBreak);
+  const breakStartMs = activeBreak?.startTime ? new Date(activeBreak.startTime).getTime() : 0;
+  const breakElapsedSeconds =
+    isOnBreak && breakStartMs ? Math.max(0, Math.floor((currentMs - breakStartMs) / 1000)) : 0;
+
+  const [showBreakModal, setShowBreakModal] = useState(false);
+  const [breakReason, setBreakReason] = useState('Lunch Break');
+  const [customReason, setCustomReason] = useState('');
 
   // Shift Toggle Handler
   const handleToggleShift = async () => {
@@ -110,6 +124,51 @@ export default function EmployeeTasksPage() {
       }
     } catch (err) {
       console.error('Failed to toggle shift:', err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Start Break Handler
+  const handleStartBreak = async (reasonToUse?: string) => {
+    const finalReason = reasonToUse || (breakReason === 'Other' ? customReason.trim() || 'Break' : breakReason);
+    try {
+      setActionLoading('break_start');
+      const res = await fetch('/api/employee/shift/break/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: finalReason }),
+      });
+      if (res.ok) {
+        soundPlayer.playChime('success');
+        setShowBreakModal(false);
+        setCustomReason('');
+        await fetchData();
+      } else {
+        const json = await res.json().catch(() => ({}));
+        alert(json.error || 'Failed to start break');
+      }
+    } catch (err) {
+      console.error('Failed to start break:', err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // End Break Handler
+  const handleEndBreak = async () => {
+    try {
+      setActionLoading('break_end');
+      const res = await fetch('/api/employee/shift/break/end', { method: 'POST' });
+      if (res.ok) {
+        soundPlayer.playChime('success');
+        await fetchData();
+      } else {
+        const json = await res.json().catch(() => ({}));
+        alert(json.error || 'Failed to end break');
+      }
+    } catch (err) {
+      console.error('Failed to end break:', err);
     } finally {
       setActionLoading(null);
     }
@@ -266,9 +325,9 @@ export default function EmployeeTasksPage() {
 
   const nextDueItem = upcomingItems[0] || null;
 
-  // Sound chime when a pending task is ringing (ONLY if shift is active)
+  // Sound chime when a pending task is ringing (ONLY if shift is active and NOT on break)
   useEffect(() => {
-    if (!isShiftActive || isMuted || pendingTasks.length === 0) return;
+    if (!isShiftActive || isOnBreak || isMuted || pendingTasks.length === 0) return;
 
     const hasRingingItems = pendingTasks.some((t) =>
       t.checklists.some((c: any) => c.isRecurringDue)
@@ -281,7 +340,7 @@ export default function EmployeeTasksPage() {
       }, 8000);
       return () => clearInterval(ringTimer);
     }
-  }, [pendingTasks, isMuted, isShiftActive]);
+  }, [pendingTasks, isMuted, isShiftActive, isOnBreak]);
 
   // Filter tasks based on search / category filter
   const categories = Array.from(new Set(tasks.map((t) => t.category).filter(Boolean)));
@@ -317,17 +376,44 @@ export default function EmployeeTasksPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Break Action in Header */}
+          {isShiftActive && !isOnBreak && (
+            <button
+              type="button"
+              onClick={() => setShowBreakModal(true)}
+              disabled={actionLoading === 'break_start'}
+              className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 px-3 py-2 text-xs font-bold text-amber-900 shadow-sm transition active:scale-95"
+              title="Take a Break (Lunch, Washroom, Tea, etc.)"
+            >
+              <Coffee className="h-3.5 w-3.5 text-amber-600" />
+              <span>Take Break ☕</span>
+            </button>
+          )}
+
+          {isShiftActive && isOnBreak && (
+            <button
+              type="button"
+              onClick={handleEndBreak}
+              disabled={actionLoading === 'break_end'}
+              className="flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 px-3.5 py-2 text-xs font-bold text-white shadow-sm shadow-amber-200 transition active:scale-95 animate-pulse"
+              title="Click to End Break & Resume Shift"
+            >
+              <Play className="h-3.5 w-3.5" />
+              <span>End Break ({formatTimer(breakElapsedSeconds)})</span>
+            </button>
+          )}
+
           {/* Shift Toggle Button in Header */}
           <button
             type="button"
             onClick={handleToggleShift}
-            disabled={actionLoading === 'shift_toggle'}
+            disabled={actionLoading === 'shift_toggle' || isOnBreak}
             className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold text-white shadow-sm transition active:scale-95 ${
               isShiftActive
                 ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
                 : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
-            }`}
-            title={isShiftActive ? 'Click to End Shift' : 'Click to Start Shift & Activate Tasks'}
+            } ${isOnBreak ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title={isOnBreak ? 'Please end your break before toggling shift' : isShiftActive ? 'Click to End Shift' : 'Click to Start Shift & Activate Tasks'}
           >
             <Power className="h-3.5 w-3.5" />
             <span>{isShiftActive ? 'Shift ON 🟢' : 'Toggle Shift ON ⚪'}</span>
@@ -359,6 +445,103 @@ export default function EmployeeTasksPage() {
           </button>
         </div>
       </div>
+
+      {/* Quick 1-Click Break Pills when shift is active and NOT on break */}
+      {isShiftActive && !isOnBreak && (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mr-1">
+            <Coffee className="h-3.5 w-3.5 text-amber-600" />
+            <span>Quick Break:</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleStartBreak('Lunch Break')}
+            disabled={actionLoading === 'break_start'}
+            className="flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900 transition shadow-2xs active:scale-95"
+          >
+            <span>🍱 Lunch Break</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleStartBreak('Washroom Break')}
+            disabled={actionLoading === 'break_start'}
+            className="flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-900 transition shadow-2xs active:scale-95"
+          >
+            <span>🚻 Washroom</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleStartBreak('Tea / Coffee Break')}
+            disabled={actionLoading === 'break_start'}
+            className="flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-900 transition shadow-2xs active:scale-95"
+          >
+            <span>☕ Tea Break</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleStartBreak('Prayer Break')}
+            disabled={actionLoading === 'break_start'}
+            className="flex items-center gap-1 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 text-xs font-medium text-purple-900 transition shadow-2xs active:scale-95"
+          >
+            <span>🤲 Prayer</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowBreakModal(true)}
+            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 transition shadow-2xs"
+          >
+            <span>More Breaks...</span>
+          </button>
+        </div>
+      )}
+
+      {/* ACTIVE BREAK CONTROLLER BANNER */}
+      {isShiftActive && isOnBreak && (
+        <div className="rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-orange-50/60 to-amber-50 p-5 shadow-sm animate-in fade-in duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-md shadow-amber-200 animate-pulse">
+                <Coffee className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-amber-200/90 text-amber-900 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider">
+                    Break Active
+                  </span>
+                  <span className="text-sm font-bold text-amber-950">
+                    {activeBreak?.reason || 'Standard Break'}
+                  </span>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-mono text-amber-950 mt-1 flex items-baseline gap-2">
+                  <span>{formatTimer(breakElapsedSeconds)}</span>
+                  <span className="text-xs font-semibold text-amber-700 font-sans">elapsed</span>
+                </div>
+                <div className="text-[11px] text-amber-800/90 mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-medium">
+                  <span className="inline-flex items-center gap-1 text-amber-900 font-semibold">
+                    <VolumeX className="h-3 w-3 text-amber-700" /> Sound muted during break
+                  </span>
+                  <span>•</span>
+                  <span>Task countdown timers continue ticking in background.</span>
+                  <span>•</span>
+                  <span>When you end break, expired tasks will ring and appear unchecked.</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleEndBreak}
+                disabled={actionLoading === 'break_end'}
+                className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-5 py-3 text-xs font-bold text-white shadow-md shadow-emerald-200 transition active:scale-95 disabled:opacity-50"
+              >
+                <Play className="h-4 w-4" />
+                <span>{actionLoading === 'break_end' ? 'Ending Break...' : 'End Break & Resume Work'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* STATE 1: SHIFT IS OFF / INACTIVE -> SHOW SHIFT START PROMPT */}
       {!isShiftActive && (
@@ -786,6 +969,117 @@ export default function EmployeeTasksPage() {
                 );
               })
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Break Selection Modal */}
+      {showBreakModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                  <Coffee className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Take a Work Break</h3>
+                  <p className="text-[11px] text-slate-500">Choose your break reason</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBreakModal(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {[
+                { reason: 'Lunch Break', icon: '🍱', label: 'Lunch Break', desc: 'Meal time (30-60 min)' },
+                { reason: 'Washroom Break', icon: '🚻', label: 'Washroom / Restroom', desc: 'Short comfort break (5-10 min)' },
+                { reason: 'Tea / Coffee Break', icon: '☕', label: 'Tea / Coffee Break', desc: 'Quick refresh (10-15 min)' },
+                { reason: 'Prayer Break', icon: '🤲', label: 'Prayer Break', desc: 'Prayer time (15 min)' },
+                { reason: 'Personal Break', icon: '🚶', label: 'Personal Break', desc: 'Short personal pause' },
+                { reason: 'Other', icon: '✏️', label: 'Other Reason', desc: 'Specify custom break reason' },
+              ].map((item) => {
+                const isSelected = breakReason === item.reason;
+                return (
+                  <button
+                    key={item.reason}
+                    type="button"
+                    onClick={() => setBreakReason(item.reason)}
+                    className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition ${
+                      isSelected
+                        ? 'border-amber-400 bg-amber-50/80 ring-2 ring-amber-300'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{item.icon}</span>
+                      <div>
+                        <div className="text-xs font-bold text-slate-900">{item.label}</div>
+                        <div className="text-[10px] text-slate-500">{item.desc}</div>
+                      </div>
+                    </div>
+                    <input
+                      type="radio"
+                      name="breakOption"
+                      checked={isSelected}
+                      onChange={() => setBreakReason(item.reason)}
+                      className="h-4 w-4 text-amber-600 focus:ring-amber-500"
+                    />
+                  </button>
+                );
+              })}
+
+              {breakReason === 'Other' && (
+                <div className="pt-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Custom Break Reason:
+                  </label>
+                  <input
+                    type="text"
+                    value={customReason}
+                    onChange={(e) => setCustomReason(e.target.value)}
+                    placeholder="e.g. Doctor Call, Quick Errand, etc."
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-900 focus:border-amber-500 focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl bg-amber-50/80 border border-amber-200 p-3 text-[11px] text-amber-900 space-y-1">
+              <div className="font-semibold flex items-center gap-1.5 text-amber-950">
+                <VolumeX className="h-3.5 w-3.5 text-amber-700" />
+                Notification Mute & Timer Continuity:
+              </div>
+              <p>
+                During your break, task alarm bells will not ring. Task countdown timers will keep ticking in the background. When you end your break, any expired tasks will immediately alert and prompt you to check off.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowBreakModal(false)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleStartBreak()}
+                disabled={actionLoading === 'break_start' || (breakReason === 'Other' && !customReason.trim())}
+                className="flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 px-5 py-2 text-xs font-bold text-white shadow-md shadow-amber-200 transition active:scale-95 disabled:opacity-50"
+              >
+                <Coffee className="h-3.5 w-3.5" />
+                <span>{actionLoading === 'break_start' ? 'Starting...' : 'Start Break'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
         profile: true,
         attendances: {
           where: { date: todayStr },
+          include: { breaks: true },
           take: 1,
         },
       },
@@ -36,9 +37,19 @@ export async function POST(req: NextRequest) {
 
     const attendance = user.attendances?.[0];
     const isShiftActive = Boolean(attendance?.actualStart && !attendance?.actualEnd);
+    const activeBreak = attendance?.breaks?.find((b) => b.endTime === null) || null;
 
     // Case 1: Inactivity detected (15+ min of no mouse activity)
     if (eventType === 'MOUSE_INACTIVE_15M' || (isIdle && !user.profile.isIdle)) {
+      // If user is currently on an authorized break, do not log a negative inactivity alert
+      if (activeBreak) {
+        return NextResponse.json({
+          success: true,
+          message: `User is on authorized break (${activeBreak.reason || 'Break'}), inactivity ignored.`,
+          isOnBreak: true,
+        });
+      }
+
       const idleStartedAt = user.profile.lastActiveAt || new Date(now.getTime() - 15 * 60 * 1000);
 
       await prisma.employeeProfile.update({

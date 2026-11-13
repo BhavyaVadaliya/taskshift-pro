@@ -127,6 +127,7 @@ export async function GET(req: NextRequest) {
   // Build Live Employee Activity section rows
   const liveActivity = employees.map((emp) => {
     const att = attendanceMap.get(emp.id);
+    const activeBreak = att?.breaks?.find((b) => b.endTime === null) || null;
     const empTasks = taskInstances.filter((t) => t.userId === emp.id);
 
     const empCompleted = empTasks.filter(
@@ -146,7 +147,6 @@ export async function GET(req: NextRequest) {
       } else if (att.status === 'FORGOTTEN_LOGOUT') {
         currentStatus = 'Forgotten Logout';
       } else {
-        const activeBreak = att.breaks.find((b) => b.endTime === null);
         if (activeBreak) {
           currentStatus = 'On Break';
         } else if (att.isLate) {
@@ -200,15 +200,55 @@ export async function GET(req: NextRequest) {
       shiftDurationMins,
       isLate: att?.isLate || false,
       lateMinutes: att?.lateMinutes || 0,
+      activeBreak: activeBreak
+        ? {
+            id: activeBreak.id,
+            reason: activeBreak.reason || 'Break',
+            startTime: activeBreak.startTime.toISOString(),
+            durationMinutes: Math.max(0, Math.round((currentMs - activeBreak.startTime.getTime()) / 60000)),
+          }
+        : null,
+      totalBreakMinutes: att?.breakMinutes || 0,
       // Mouse activity metrics
       isShiftActive,
       lastActiveAt: emp.profile?.lastActiveAt || null,
       isIdle,
       idleMinutes,
       mouseStatus,
-      mouseStatusLabel,
+      mouseStatusLabel: activeBreak
+        ? `⏸️ On Break (${activeBreak.reason || 'Break'})`
+        : mouseStatusLabel,
     };
   });
+
+  // Extract all break logs for today
+  const allBreaksToday: any[] = [];
+  for (const att of attendances) {
+    const user = employees.find((e) => e.id === att.userId);
+    for (const b of att.breaks) {
+      const isOngoing = b.endTime === null;
+      const durMins = isOngoing
+        ? Math.max(0, Math.round((currentMs - b.startTime.getTime()) / 60000))
+        : b.durationMinutes;
+      allBreaksToday.push({
+        id: b.id,
+        userId: att.userId,
+        employeeName: user?.profile?.fullName || 'Employee',
+        employeeId: user?.employeeId || '',
+        department: user?.profile?.department?.name || 'Unassigned',
+        reason: b.reason || 'Standard Break',
+        startTime: b.startTime.toISOString(),
+        startTimeFormatted: new Date(b.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        endTime: b.endTime ? b.endTime.toISOString() : null,
+        endTimeFormatted: b.endTime
+          ? new Date(b.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : 'In Progress',
+        durationMinutes: durMins,
+        isOngoing,
+      });
+    }
+  }
+  allBreaksToday.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 
   // Chart 1: Daily Task Completion (last 7 days)
   const last7Days: any[] = [];
@@ -326,6 +366,7 @@ export async function GET(req: NextRequest) {
     },
     liveActivity,
     inactivityLogs: parsedInactivityLogs,
+    breaksToday: allBreaksToday,
     filters: {
       departments,
       shifts,

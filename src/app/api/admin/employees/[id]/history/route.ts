@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       },
       attendances: {
         where: { date },
-        include: { shift: true },
+        include: { shift: true, breaks: true },
         take: 1,
       },
     },
@@ -295,6 +295,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       actualEnd: attendance?.actualEnd || null,
       lateMinutes: attendance?.lateMinutes || 0,
       totalDurationMinutes: attendance?.totalDurationMinutes || 0,
+      breakMinutes: attendance?.breakMinutes || 0,
+      breaks: attendance?.breaks || [],
+      activeBreak: attendance?.breaks?.find((b) => b.endTime === null) || null,
       attendanceStatus: attendance?.status || (isShiftActive ? 'PRESENT' : 'OFF'),
     },
     mouseActivity: {
@@ -315,6 +318,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       actualEnd: a.actualEnd,
       status: a.status,
       durationMinutes: a.totalDurationMinutes,
+      breakMinutes: a.breakMinutes || 0,
       lateMinutes: a.lateMinutes,
     })),
     summary: {

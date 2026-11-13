@@ -1411,7 +1411,10 @@ export default function AdminEmployeesPage() {
                                 {a.actualEnd ? new Date(a.actualEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active / Open'}
                               </td>
                               <td className="py-2.5 px-3 font-mono text-slate-800">
-                                {a.durationMinutes || 0}m
+                                <div>{a.durationMinutes || 0}m</div>
+                                {a.breakMinutes > 0 && (
+                                  <div className="text-[10px] text-amber-700 font-sans font-medium">({a.breakMinutes}m break)</div>
+                                )}
                               </td>
                               <td className="py-2.5 px-4 text-right">
                                 <span

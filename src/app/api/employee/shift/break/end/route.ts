@@ -44,10 +44,24 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  await prisma.employeeProfile.update({
+    where: { userId: auth.user.id },
+    data: {
+      isIdle: false,
+      idleSince: null,
+      lastActiveAt: now,
+    },
+  });
+
   await logEmployeeActivity({
     userId: auth.user.id,
     action: 'BREAK_ENDED',
-    details: { durationMinutes },
+    details: {
+      reason: openBreak.reason || 'Break',
+      durationMinutes,
+      startTime: openBreak.startTime.toISOString(),
+      endTime: now.toISOString(),
+    },
     req,
   });
 

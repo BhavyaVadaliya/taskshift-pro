@@ -20,6 +20,7 @@ import {
   Calendar,
   X,
   ExternalLink,
+  Coffee,
 } from 'lucide-react';
 import { getTodayDateString } from '@/lib/utils';
 import Link from 'next/link';
@@ -489,6 +490,11 @@ export default function AdminMouseActivityPage() {
                             <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 text-slate-600 px-2.5 py-0.5 text-[10px] font-semibold border border-slate-200">
                               <MousePointer className="h-3 w-3 text-slate-400" />
                               Shift Inactive ⚪
+                            </span>
+                          ) : emp.isOnBreak ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-800 px-2.5 py-0.5 text-[10px] font-bold border border-amber-200">
+                              <Coffee className="h-3 w-3 text-amber-600" />
+                              ⏸️ On Break ({emp.breakReason || 'Break'})
                             </span>
                           ) : emp.isIdle ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-red-50 text-red-700 px-2.5 py-0.5 text-[10px] font-bold border border-red-200 animate-pulse">
