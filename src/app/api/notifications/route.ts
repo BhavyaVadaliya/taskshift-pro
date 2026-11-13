@@ -23,6 +23,29 @@ export async function GET(req: NextRequest) {
   });
 }
 
+export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if ('error' in auth) return auth.error;
+
+  const { title, message, type, deliveryStatus } = await req.json();
+
+  if (!title || !message) {
+    return NextResponse.json({ success: false, error: 'Title and message are required.' }, { status: 400 });
+  }
+
+  const notification = await prisma.notificationLog.create({
+    data: {
+      userId: auth.user.id,
+      title,
+      message,
+      type: (type as any) || 'TASK_REMINDER',
+      deliveryStatus: (deliveryStatus as any) || 'DELIVERED',
+    },
+  });
+
+  return NextResponse.json({ success: true, notification });
+}
+
 export async function PUT(req: NextRequest) {
   const auth = await requireAuth(req);
   if ('error' in auth) return auth.error;

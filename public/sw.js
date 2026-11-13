@@ -41,11 +41,38 @@ self.addEventListener('push', (event) => {
     requireInteraction: true,
   };
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+  const promiseChain = self.registration.showNotification(data.title, options).then(() => {
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('chrome_notifications_channel');
+        bc.postMessage({
+          type: 'CHROME_PUSH_RECEIVED',
+          title: data.title,
+          body: data.body,
+          icon: data.icon,
+          timestamp: new Date().toISOString(),
+          data: data.data,
+        });
+      }
+    } catch (e) {}
+  });
+
+  event.waitUntil(promiseChain);
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const bc = new BroadcastChannel('chrome_notifications_channel');
+      bc.postMessage({
+        type: 'CHROME_PUSH_CLICKED',
+        title: event.notification.title,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  } catch (e) {}
 
   if (event.action === 'close') {
     return;
