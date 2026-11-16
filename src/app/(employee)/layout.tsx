@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Header } from '@/components/layout/Header';
 import { EmployeeSidebar } from '@/components/layout/EmployeeSidebar';
+import { ChromeTaskWatcher } from '@/components/providers/ChromeTaskWatcher';
 
 export default function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -31,6 +32,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-50">
+      <ChromeTaskWatcher />
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <EmployeeSidebar />

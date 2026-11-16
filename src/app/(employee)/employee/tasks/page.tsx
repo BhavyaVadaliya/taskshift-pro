@@ -52,12 +52,32 @@ export default function EmployeeTasksPage() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
 
-  // 1-second live ticker for real-time countdowns
+  // 1-second live ticker for real-time countdowns (Web Worker backed to avoid Chrome background throttling)
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentMs(Date.now());
-    }, 1000);
-    return () => clearInterval(timer);
+    let worker: Worker | null = null;
+    let fallbackTimer: NodeJS.Timeout | null = null;
+
+    try {
+      worker = new Worker('/worker-ticker.js');
+      worker.onmessage = (e) => {
+        if (e.data?.now) {
+          setCurrentMs(e.data.now);
+        }
+      };
+      worker.postMessage('START');
+    } catch (err) {
+      fallbackTimer = setInterval(() => {
+        setCurrentMs(Date.now());
+      }, 1000);
+    }
+
+    return () => {
+      if (worker) {
+        worker.postMessage('STOP');
+        worker.terminate();
+      }
+      if (fallbackTimer) clearInterval(fallbackTimer);
+    };
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -230,24 +250,8 @@ export default function EmployeeTasksPage() {
     }
   };
 
-  // Evaluate status and next due time for each checklist item
+  // Evaluate status and next due time for each checklist item continuously while tab is open
   const evaluatedTasks = useMemo(() => {
-    // If shift is inactive/OFF, tasks should NOT be marked pending or due
-    if (!isShiftActive) {
-      return tasks.map((task) => ({
-        ...task,
-        checklists: (task.checklists || []).map((item: any) => ({
-          ...item,
-          diffSec: 0,
-          isPending: false,
-          isRecurringDue: false,
-          secondsUntilNext: 0,
-        })),
-        taskPendingCount: 0,
-        isTaskPending: false,
-      }));
-    }
-
     return tasks.map((task) => {
       let taskPendingCount = 0;
 
@@ -280,21 +284,17 @@ export default function EmployeeTasksPage() {
         isTaskPending: taskPendingCount > 0,
       };
     });
-  }, [tasks, currentMs, shiftStartMs, isShiftActive]);
+  }, [tasks, currentMs, shiftStartMs]);
 
-  // Separate tasks into pending vs all-done (only active during an active shift)
-  const pendingTasks = isShiftActive ? evaluatedTasks.filter((t) => t.isTaskPending) : [];
-  const completedTasks = isShiftActive ? evaluatedTasks.filter((t) => !t.isTaskPending) : [];
+  // Separate tasks into pending vs all-done (continuous while software tab is open in Chrome)
+  const pendingTasks = evaluatedTasks.filter((t) => t.isTaskPending);
+  const completedTasks = evaluatedTasks.filter((t) => !t.isTaskPending);
 
-  const totalPendingItems = isShiftActive
-    ? evaluatedTasks.reduce((sum, t) => sum + t.taskPendingCount, 0)
-    : 0;
-  const allTasksAreDone = isShiftActive && evaluatedTasks.length > 0 && totalPendingItems === 0;
+  const totalPendingItems = evaluatedTasks.reduce((sum, t) => sum + t.taskPendingCount, 0);
+  const allTasksAreDone = evaluatedTasks.length > 0 && totalPendingItems === 0;
 
   // Find all upcoming recurring checklist items across all tasks and identify the closest one
   const upcomingItems = useMemo(() => {
-    if (!isShiftActive) return [];
-
     const list: Array<{
       taskId: string;
       taskName: string;
@@ -321,13 +321,13 @@ export default function EmployeeTasksPage() {
 
     list.sort((a, b) => a.secondsUntilNext - b.secondsUntilNext);
     return list;
-  }, [evaluatedTasks, isShiftActive]);
+  }, [evaluatedTasks]);
 
   const nextDueItem = upcomingItems[0] || null;
 
-  // Sound chime when a pending task is ringing (ONLY if shift is active and NOT on break)
+  // Sound chime when a pending task is ringing (NOT on break and NOT muted)
   useEffect(() => {
-    if (!isShiftActive || isOnBreak || isMuted || pendingTasks.length === 0) return;
+    if (isOnBreak || isMuted || pendingTasks.length === 0) return;
 
     const hasRingingItems = pendingTasks.some((t) =>
       t.checklists.some((c: any) => c.isRecurringDue)
@@ -340,7 +340,7 @@ export default function EmployeeTasksPage() {
       }, 8000);
       return () => clearInterval(ringTimer);
     }
-  }, [pendingTasks, isMuted, isShiftActive, isOnBreak]);
+  }, [pendingTasks, isMuted, isOnBreak]);
 
   // Filter tasks based on search / category filter
   const categories = Array.from(new Set(tasks.map((t) => t.category).filter(Boolean)));
@@ -413,10 +413,10 @@ export default function EmployeeTasksPage() {
                 ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
                 : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
             } ${isOnBreak ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title={isOnBreak ? 'Please end your break before toggling shift' : isShiftActive ? 'Click to End Shift' : 'Click to Start Shift & Activate Tasks'}
+            title={isOnBreak ? 'Please end your break before toggling shift' : isShiftActive ? 'Click to End Shift' : 'Click to Clock In Shift'}
           >
             <Power className="h-3.5 w-3.5" />
-            <span>{isShiftActive ? 'Shift ON 🟢' : 'Toggle Shift ON ⚪'}</span>
+            <span>{isShiftActive ? 'Shift ON 🟢' : 'Clock In Shift ⚪'}</span>
           </button>
 
           {/* Mute / Unmute Button */}
@@ -543,78 +543,49 @@ export default function EmployeeTasksPage() {
         </div>
       )}
 
-      {/* STATE 1: SHIFT IS OFF / INACTIVE -> SHOW SHIFT START PROMPT */}
+      {/* Informative Clock-in Banner when shift attendance is not yet clocked in */}
       {!isShiftActive && (
-        <div className="space-y-6 animate-in fade-in duration-300">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm text-center">
-            <div className="max-w-md mx-auto space-y-4">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 border border-slate-200">
-                <Power className="h-7 w-7 text-slate-600" />
+        <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-blue-50/90 p-4 sm:p-5 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-200">
+                <Power className="h-5 w-5" />
               </div>
-
               <div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-0.5 text-xs font-bold text-slate-600 border border-slate-200 mb-2">
-                  Shift is Inactive (OFF)
-                </span>
-                <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                  Your Shift Has Not Started Yet
-                </h2>
-                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                  Scheduled tasks, individual timers, and alarm bells will activate as soon as you toggle ON your shift.
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-700 px-2.5 py-0.5 text-[10px] font-bold border border-blue-200">
+                    Tab Active • Live Notifications ON
+                  </span>
+                  {assignedShift && (
+                    <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                      Shift: <strong>{assignedShift.name}</strong> ({assignedShift.startTime} – {assignedShift.endTime})
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-sm font-bold text-slate-900 mt-0.5">
+                  Task timers & Chrome desktop notifications are actively running
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Notifications trigger automatically while this tab is open. Click &quot;Clock In Shift&quot; to record your official shift attendance.
                 </p>
               </div>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleToggleShift}
-                  disabled={actionLoading === 'shift_toggle'}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-6 py-3 text-sm font-bold text-white shadow-md shadow-blue-200 transition active:scale-95"
-                >
-                  <Power className="h-4 w-4" />
-                  <span>Start Shift & Activate Tasks</span>
-                </button>
-              </div>
-
-              {assignedShift && (
-                <div className="text-[11px] text-slate-400 font-mono pt-1">
-                  Assigned Shift: <strong>{assignedShift.name}</strong> ({assignedShift.startTime} – {assignedShift.endTime})
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Preview of Configured Checklist Tasks */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-              <div className="flex items-center gap-2">
-                <ListChecks className="h-4 w-4 text-blue-600" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Configured Tasks Ready For Your Shift (7 Tasks)
-                </h3>
-              </div>
-              <span className="text-[10px] text-slate-400 font-medium">Starts with shift</span>
             </div>
 
-            <div className="divide-y divide-slate-100">
-              {tasks.flatMap((t) => t.checklists || []).map((item: any, idx: number) => (
-                <div key={item.id || idx} className="py-2.5 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <span className="h-2 w-2 rounded-full bg-slate-300" />
-                    <span className="font-semibold text-slate-800">{item.title}</span>
-                  </div>
-                  <span className="rounded-md bg-slate-100 text-slate-600 px-2 py-0.5 text-[10px] font-mono font-medium">
-                    Every {item.timerMinutes || 60}m
-                  </span>
-                </div>
-              ))}
-            </div>
+            <button
+              type="button"
+              onClick={handleToggleShift}
+              disabled={actionLoading === 'shift_toggle'}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-200 transition active:scale-95 shrink-0"
+            >
+              <Power className="h-3.5 w-3.5" />
+              <span>Clock In Shift</span>
+            </button>
           </div>
         </div>
       )}
 
-      {/* STATE 2: SHIFT IS ACTIVE AND ALL TASKS ARE DONE -> SHOW NEXT TASK COUNTDOWN */}
-      {isShiftActive && allTasksAreDone && (
+      {/* STATE 2: ALL TASKS ARE DONE -> SHOW NEXT TASK COUNTDOWN */}
+      {allTasksAreDone && (
         <div className="space-y-6 animate-in fade-in duration-500">
           {/* Hero Celebration & Countdown Banner */}
           <div className="rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50/80 via-white to-blue-50/50 p-6 sm:p-8 shadow-sm text-center relative overflow-hidden ring-1 ring-emerald-100">
@@ -782,8 +753,8 @@ export default function EmployeeTasksPage() {
         </div>
       )}
 
-      {/* STATE 3: SHIFT IS ACTIVE AND TASKS ARE PENDING -> SHOW TASKS WITH CHECKLISTS */}
-      {isShiftActive && !allTasksAreDone && (
+      {/* STATE 3: TASKS ARE PENDING -> SHOW TASKS WITH CHECKLISTS */}
+      {!allTasksAreDone && (
         <div className="space-y-6">
           {/* Search & Category Filter */}
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-sm">
