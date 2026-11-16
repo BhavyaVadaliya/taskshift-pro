@@ -24,6 +24,22 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ success: false, error: 'Task instance not found.' }, { status: 404 });
   }
 
+  // Check if employee has an active clocked-in shift
+  const activeAttendance = await prisma.shiftAttendance.findFirst({
+    where: {
+      userId: auth.user.id,
+      actualEnd: null,
+      status: { in: ['ACTIVE', 'ON_TIME', 'LATE'] },
+    },
+  });
+
+  if (!activeAttendance) {
+    return NextResponse.json(
+      { success: false, error: 'Your shift is currently inactive. Please start your shift before checking off tasks.' },
+      { status: 400 }
+    );
+  }
+
   // Check if completed after due time
   const isLate = now.getTime() > instance.scheduledDueTime.getTime();
 
