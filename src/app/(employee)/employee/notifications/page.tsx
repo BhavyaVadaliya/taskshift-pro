@@ -242,6 +242,21 @@ export default function EmployeeChromeNotificationsPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 select-none animate-in fade-in duration-300">
+      {/* Inactive Feature Notice */}
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs flex items-center justify-between gap-3 text-slate-600">
+        <div className="flex items-center gap-2">
+          <Info className="h-4 w-4 text-slate-500 shrink-0" />
+          <span>
+            This Chrome Notifications page is currently <strong>hidden &amp; paused</strong> from the employee sidebar. All code and settings are preserved and can be re-enabled anytime.
+          </span>
+        </div>
+        <Link
+          href="/employee/tasks"
+          className="rounded-lg bg-white border border-slate-200 px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-100 transition shrink-0"
+        >
+          Return to My Tasks
+        </Link>
+      </div>
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

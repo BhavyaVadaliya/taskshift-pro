@@ -554,7 +554,7 @@ export default function EmployeeTasksPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-700 px-2.5 py-0.5 text-[10px] font-bold border border-blue-200">
-                    Tab Active • Live Notifications ON
+                    Tab Active • Shift Clock-in Ready
                   </span>
                   {assignedShift && (
                     <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
@@ -563,10 +563,10 @@ export default function EmployeeTasksPage() {
                   )}
                 </div>
                 <h3 className="text-sm font-bold text-slate-900 mt-0.5">
-                  Task timers & Chrome desktop notifications are actively running
+                  Task timers and checklists are active
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Notifications trigger automatically while this tab is open. Click &quot;Clock In Shift&quot; to record your official shift attendance.
+                  Tasks and checklists run while this tab is open. Click &quot;Clock In Shift&quot; to record your official shift attendance.
                 </p>
               </div>
             </div>

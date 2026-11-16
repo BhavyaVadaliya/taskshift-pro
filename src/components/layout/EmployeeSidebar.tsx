@@ -13,19 +13,29 @@ import {
 import { cn } from '@/lib/utils';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 
+// Feature flag: set to true to re-enable Chrome Notifications in the employee sidebar
+const ENABLE_CHROME_NOTIFICATIONS_FEATURE = false;
+
 export function EmployeeSidebar() {
   const pathname = usePathname();
   const { unreadCount, pushPermission } = useNotifications();
 
   const employeeNavItems = [
     { label: 'My Tasks', href: '/employee/tasks', icon: CheckSquare },
-    {
-      label: 'Chrome Notifications',
-      href: '/employee/notifications',
-      icon: Bell,
-      badge: unreadCount > 0 ? `${unreadCount}` : 'Live',
-      badgeColor: unreadCount > 0 ? 'bg-red-50 text-red-600 border-red-200 font-bold' : 'bg-blue-50 text-blue-700 border-blue-200',
-    },
+    ...(ENABLE_CHROME_NOTIFICATIONS_FEATURE
+      ? [
+          {
+            label: 'Chrome Notifications',
+            href: '/employee/notifications',
+            icon: Bell,
+            badge: unreadCount > 0 ? `${unreadCount}` : 'Live',
+            badgeColor:
+              unreadCount > 0
+                ? 'bg-red-50 text-red-600 border-red-200 font-bold'
+                : 'bg-blue-50 text-blue-700 border-blue-200',
+          },
+        ]
+      : []),
     { label: 'Task History', href: '/employee/history', icon: History },
     { label: 'My Profile', href: '/employee/profile', icon: UserCheck },
   ];
@@ -73,23 +83,25 @@ export function EmployeeSidebar() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-xs text-blue-900">
-        <div className="flex items-center justify-between mb-1">
-          <p className="font-semibold text-xs">Chrome Push Status</p>
-          <span
-            className={cn(
-              'h-2 w-2 rounded-full',
-              pushPermission === 'granted' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
-            )}
-            title={`Permission: ${pushPermission}`}
-          />
+      {ENABLE_CHROME_NOTIFICATIONS_FEATURE && (
+        <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-xs text-blue-900">
+          <div className="flex items-center justify-between mb-1">
+            <p className="font-semibold text-xs">Chrome Push Status</p>
+            <span
+              className={cn(
+                'h-2 w-2 rounded-full',
+                pushPermission === 'granted' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
+              )}
+              title={`Permission: ${pushPermission}`}
+            />
+          </div>
+          <p className="text-[11px] text-blue-700/80 leading-relaxed">
+            {pushPermission === 'granted'
+              ? 'Chrome notifications active. Reminders trigger on your desktop.'
+              : 'Allow Chrome notifications to get live audio & popup task alerts.'}
+          </p>
         </div>
-        <p className="text-[11px] text-blue-700/80 leading-relaxed">
-          {pushPermission === 'granted'
-            ? 'Chrome notifications active. Reminders trigger on your desktop.'
-            : 'Allow Chrome notifications to get live audio & popup task alerts.'}
-        </p>
-      </div>
+      )}
     </aside>
   );
 }

@@ -5,6 +5,9 @@ import { useAuth } from './AuthProvider';
 import { showChromeDesktopNotification } from '@/lib/clientNotification';
 import { soundPlayer } from '@/lib/audio';
 
+// Feature flag: set to true to re-enable continuous Chrome desktop task watcher
+export const ENABLE_CHROME_TASK_WATCHER = false;
+
 export function ChromeTaskWatcher() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<any[]>([]);
@@ -12,6 +15,10 @@ export function ChromeTaskWatcher() {
   const [shiftStartMs, setShiftStartMs] = useState<number>(Date.now());
   const lastNotifiedRef = useRef<Record<string, number>>({});
   const soundEnabledRef = useRef<boolean>(true);
+
+  if (!ENABLE_CHROME_TASK_WATCHER) {
+    return null;
+  }
 
   // Sync sound preference
   useEffect(() => {

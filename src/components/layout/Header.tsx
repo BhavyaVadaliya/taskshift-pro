@@ -102,7 +102,8 @@ export function Header() {
           </div>
         </div>
 
-        {pushPermission !== 'granted' && (
+        {/* Feature flag: set ENABLE_PUSH_NOTIFICATION_HEADER_BUTTON = true to re-show in header */}
+        {false && pushPermission !== 'granted' && (
           <button
             onClick={requestPushPermission}
             className="flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 transition shadow-xs"
